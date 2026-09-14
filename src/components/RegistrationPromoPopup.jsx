@@ -155,20 +155,21 @@ export default function RegistrationPromoPopup() {
                 position: 'absolute',
                 top: '18px',
                 right: '18px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-secondary)',
-                width: '32px',
-                height: '32px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                transition: 'all 0.2s ease',
               }}
               title="Cerrar"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
 
             {!isSuccess ? (
@@ -184,10 +185,11 @@ export default function RegistrationPromoPopup() {
                     fontWeight: '600',
                     textTransform: 'uppercase',
                     letterSpacing: '0.15em',
-                    backgroundColor: 'rgba(197, 168, 128, 0.1)',
-                    padding: '4px 12px',
+                    backgroundColor: 'rgba(255, 212, 2, 0.12)',
+                    border: '1px solid rgba(255, 212, 2, 0.3)',
+                    padding: '5px 14px',
                     borderRadius: '50px',
-                    marginBottom: '1rem',
+                    marginBottom: '1.2rem',
                   }}
                 >
                   <Sparkles size={14} /> Regalo de Bienvenida
@@ -196,11 +198,11 @@ export default function RegistrationPromoPopup() {
                 {/* Title */}
                 <h3
                   style={{
-                    fontSize: 'clamp(1.5rem, 3.5vw, 1.9rem)',
+                    fontSize: 'clamp(1.5rem, 3.5vw, 2rem)',
                     fontWeight: '700',
-                    lineHeight: '1.2',
-                    marginBottom: '0.6rem',
-                    color: 'var(--text-primary)',
+                    lineHeight: '1.25',
+                    marginBottom: '0.8rem',
+                    color: '#ffffff',
                   }}
                 >
                   Regístrate y obtén <br />
@@ -211,9 +213,9 @@ export default function RegistrationPromoPopup() {
 
                 <p
                   style={{
-                    fontSize: '0.88rem',
-                    color: 'var(--text-secondary)',
-                    lineHeight: '1.5',
+                    fontSize: '0.9rem',
+                    color: 'rgba(255, 255, 255, 0.75)',
+                    lineHeight: '1.55',
                     marginBottom: '1.8rem',
                     fontWeight: '300',
                   }}
@@ -231,20 +233,26 @@ export default function RegistrationPromoPopup() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      className="interactive"
+                      className="interactive promo-input"
                       style={{
                         width: '100%',
-                        padding: '12px 16px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid var(--border-color)',
+                        padding: '13px 16px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
                         borderRadius: '10px',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.9rem',
+                        color: '#ffffff',
+                        fontSize: '0.95rem',
                         outline: 'none',
-                        transition: 'border-color 0.2s',
+                        transition: 'all 0.2s',
                       }}
-                      onFocus={(e) => (e.target.style.borderColor = 'var(--accent-gold)')}
-                      onBlur={(e) => (e.target.style.borderColor = 'var(--border-color)')}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = 'var(--accent-gold)';
+                        e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                        e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
+                      }}
                     />
                   </div>
 
@@ -256,20 +264,26 @@ export default function RegistrationPromoPopup() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       required
-                      className="interactive"
+                      className="interactive promo-input"
                       style={{
                         width: '100%',
-                        padding: '12px 16px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid var(--border-color)',
+                        padding: '13px 16px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
                         borderRadius: '10px',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.9rem',
+                        color: '#ffffff',
+                        fontSize: '0.95rem',
                         outline: 'none',
-                        transition: 'border-color 0.2s',
+                        transition: 'all 0.2s',
                       }}
-                      onFocus={(e) => (e.target.style.borderColor = 'var(--accent-gold)')}
-                      onBlur={(e) => (e.target.style.borderColor = 'var(--border-color)')}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = 'var(--accent-gold)';
+                        e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                        e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
+                      }}
                     />
                   </div>
 
@@ -281,25 +295,31 @@ export default function RegistrationPromoPopup() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="interactive"
+                      className="interactive promo-input"
                       style={{
                         width: '100%',
-                        padding: '12px 16px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid var(--border-color)',
+                        padding: '13px 16px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
                         borderRadius: '10px',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.9rem',
+                        color: '#ffffff',
+                        fontSize: '0.95rem',
                         outline: 'none',
-                        transition: 'border-color 0.2s',
+                        transition: 'all 0.2s',
                       }}
-                      onFocus={(e) => (e.target.style.borderColor = 'var(--accent-gold)')}
-                      onBlur={(e) => (e.target.style.borderColor = 'var(--border-color)')}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = 'var(--accent-gold)';
+                        e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                        e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
+                      }}
                     />
                   </div>
 
                   {errorMsg && (
-                    <p style={{ color: '#ef4444', fontSize: '0.8rem', margin: 0 }}>
+                    <p style={{ color: '#f87171', fontSize: '0.82rem', margin: 0 }}>
                       {errorMsg}
                     </p>
                   )}
@@ -312,16 +332,16 @@ export default function RegistrationPromoPopup() {
                     style={{
                       width: '100%',
                       justifyContent: 'center',
-                      padding: '13px',
-                      fontSize: '0.85rem',
+                      padding: '14px',
+                      fontSize: '0.88rem',
                       fontWeight: '600',
-                      marginTop: '0.4rem',
+                      marginTop: '0.5rem',
                     }}
                   >
                     {isSubmitting ? 'Guardando en CMS...' : 'Reclamar mi 10% OFF →'}
                   </button>
 
-                  <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.4rem 0 0' }}>
+                  <p style={{ textAlign: 'center', fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.55)', margin: '0.4rem 0 0' }}>
                     🔒 Tus datos están 100% seguros y no enviamos spam.
                   </p>
                 </form>
@@ -346,11 +366,11 @@ export default function RegistrationPromoPopup() {
                   <Check size={30} />
                 </div>
 
-                <h3 style={{ fontSize: '1.6rem', fontWeight: '700', marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.6rem', fontWeight: '700', marginBottom: '0.5rem', color: '#ffffff' }}>
                   ¡Registro Exitoso! 🎉
                 </h3>
 
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '1.5rem' }}>
+                <p style={{ color: 'rgba(255, 255, 255, 0.78)', fontSize: '0.92rem', lineHeight: '1.55', marginBottom: '1.5rem' }}>
                   Tus datos han sido registrados en nuestro sistema. Usa este código al reservar tu sesión:
                 </p>
 
@@ -360,27 +380,29 @@ export default function RegistrationPromoPopup() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    backgroundColor: 'rgba(197, 168, 128, 0.1)',
+                    backgroundColor: 'rgba(255, 212, 2, 0.08)',
                     border: '1px dashed var(--accent-gold)',
                     borderRadius: '12px',
                     padding: '12px 18px',
                     marginBottom: '1.5rem',
                   }}
                 >
-                  <span style={{ fontSize: '1.2rem', fontWeight: '800', letterSpacing: '0.1em', color: 'var(--accent-gold)' }}>
+                  <span style={{ fontSize: '1.25rem', fontWeight: '800', letterSpacing: '0.12em', color: 'var(--accent-gold)' }}>
                     BUENATOMA10
                   </span>
                   <button
                     onClick={handleCopyCode}
                     className="interactive"
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: copied ? 'var(--accent-green)' : 'var(--text-primary)',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      color: copied ? '#22c55e' : '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '0.78rem',
+                      gap: '6px',
+                      fontSize: '0.8rem',
                       cursor: 'pointer',
                     }}
                   >
@@ -395,8 +417,8 @@ export default function RegistrationPromoPopup() {
                   style={{
                     width: '100%',
                     justifyContent: 'center',
-                    padding: '12px',
-                    fontSize: '0.85rem',
+                    padding: '13px',
+                    fontSize: '0.88rem',
                     marginBottom: '0.8rem',
                   }}
                 >
@@ -408,8 +430,8 @@ export default function RegistrationPromoPopup() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'var(--text-muted)',
-                    fontSize: '0.78rem',
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    fontSize: '0.8rem',
                     cursor: 'pointer',
                     textDecoration: 'underline',
                   }}
@@ -423,6 +445,9 @@ export default function RegistrationPromoPopup() {
       )}
 
       <style>{`
+        .promo-input::placeholder {
+          color: rgba(255, 255, 255, 0.45) !important;
+        }
         @keyframes promoScaleIn {
           from { opacity: 0; transform: scale(0.9) translateY(20px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
