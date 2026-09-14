@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, ShoppingCart, MessageCircle } from 'lucide-react';
+import { sendLeadToWix } from '../lib/wixLeads';
+import { useSEO } from '../hooks/useSEO';
 
 const getBackdropColor = (id) => {
   switch (id) {
@@ -377,6 +379,12 @@ const RealSofaSVG = () => (
 );
 
 export default function ProductPage({ addToCart, setTab }) {
+  useSEO({
+    title: 'Cotizador Interactivo de Sesiones | Buena Toma Estudio',
+    description: 'Personaliza tu sesión fotográfica en tiempo real: temáticas, peinado y maquillaje, cuadros en madera y fotos extras con simulador de estudio en vivo.',
+    canonical: typeof window !== 'undefined' ? `${window.location.origin}/cotizador` : 'https://buenatoma.mx/cotizador'
+  });
+
   const [currentStep, setCurrentStep] = useState(1);
   const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
   const [selectedMakeup, setSelectedMakeup] = useState(false);
@@ -546,6 +554,12 @@ export default function ProductPage({ addToCart, setTab }) {
       text += `Total configurado: $${totalPrice.toLocaleString('es-MX')} MXN.`;
     }
     
+    sendLeadToWix({
+      origen: `Cotizador Paquetes (${activeCategory.name})`,
+      mensaje: text,
+      title: `Cotización ${activeCategory.name} ($${totalPrice.toLocaleString('es-MX')} MXN) — [Cotizador Paquetes]`
+    });
+
     const encoded = encodeURIComponent(text);
     window.open(`https://wa.me/52${phoneNumber}?text=${encoded}`, '_blank');
   };
@@ -583,6 +597,19 @@ export default function ProductPage({ addToCart, setTab }) {
       paddingBottom: '5vh'
     }} className="fade-in">
       
+      {/* Page Title & Intro */}
+      <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: '600' }}>
+          Cotizador Interactivo
+        </span>
+        <h1 style={{ fontSize: 'clamp(2rem, 4.5vw, 3.2rem)', margin: '0.4rem 0 0.6rem 0', fontFamily: 'var(--font-serif)', fontWeight: '700' }}>
+          Configura tu Sesión en Tiempo Real
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', maxWidth: '560px', margin: '0 auto', lineHeight: '1.5' }}>
+          Personaliza temática, maquillaje, cuadros y complementos con previsualización en vivo en nuestro simulador de estudio.
+        </p>
+      </div>
+
       {/* Top progress bar */}
       <div style={{ width: '100%', marginBottom: '3rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.15em', color: 'var(--text-secondary)' }}>

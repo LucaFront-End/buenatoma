@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { MessageSquare, X, Send } from 'lucide-react';
+import { sendLeadToWix } from '../lib/wixLeads';
 
-export default function FloatingWidget() {
+export default function FloatingWidget({ customWhatsappUrl }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -19,6 +20,16 @@ export default function FloatingWidget() {
   ]);
 
   const handleWhatsappDirect = (messageText = "Hola me interesa información de su servicio de Fotografía") => {
+    sendLeadToWix({
+      origen: 'Widget Flotante (Asistente Chat)',
+      mensaje: messageText,
+      title: `Consulta Chat Flotante — [Widget Flotante]`
+    });
+
+    if (customWhatsappUrl) {
+      window.open(customWhatsappUrl, '_blank');
+      return;
+    }
     const phoneNumber = "5662914092";
     const encoded = encodeURIComponent(messageText);
     window.open(`https://wa.me/52${phoneNumber}?text=${encoded}`, '_blank');

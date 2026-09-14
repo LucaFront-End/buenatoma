@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Send, MapPin, Mail, Phone, Calendar } from 'lucide-react';
+import { sendLeadToWix } from '../lib/wixLeads';
 
 export default function Contact() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [date, setDate] = useState('');
   const [category, setCategory] = useState('cumple');
   const [hours, setHours] = useState(1);
@@ -11,6 +13,8 @@ export default function Contact() {
   const [makeup, setMakeup] = useState(false);
   const [frame, setFrame] = useState(false);
   const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Recompute estimated price dynamically
   useEffect(() => {
@@ -29,12 +33,14 @@ export default function Contact() {
     setEstimatedPrice(price);
   }, [hours, photos, makeup, frame]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name || !email) {
       alert("Por favor completa los campos requeridos.");
       return;
     }
+
+    setIsSubmitting(true);
 
     const phoneNumber = "5662914092";
     const categoryLabels = {
@@ -49,6 +55,7 @@ export default function Contact() {
     let text = `Hola me interesa información de su servicio de Fotografía. He calculado una cotización en su web:\n\n`;
     text += `*Nombre:* ${name}\n`;
     text += `*Correo:* ${email}\n`;
+    if (phone) text += `*Teléfono:* ${phone}\n`;
     if (date) text += `*Fecha sugerida:* ${date}\n`;
     text += `*Categoría:* Sesión de ${categoryLabels[category]}\n`;
     text += `*Especificaciones:* ${hours} hora(s) de sesión con ${photos} fotos retocadas.\n`;
@@ -63,6 +70,23 @@ export default function Contact() {
     
     text += `\n*Total Estimado:* $${estimatedPrice.toLocaleString('es-MX')} MXN\n\n`;
     text += `¿Tienen disponibilidad para esta fecha?`;
+
+    // Send lead to Wix CMS Contacto collection with clear origin and await
+    try {
+      await sendLeadToWix({
+        title: `${name} — [Formulario de Contacto]`,
+        nombre: name,
+        email: email,
+        telefono: phone,
+        mensaje: `Categoría: ${categoryLabels[category]} | Fecha sugerida: ${date || 'No especificada'} | Horas: ${hours} | Fotos: ${photos} | Extras: ${complements.join(', ') || 'Ninguno'} | Total Estimado: $${estimatedPrice.toLocaleString('es-MX')} MXN`,
+        origen: 'Formulario de Contacto (Cotizador)'
+      });
+    } catch (err) {
+      console.error('Error enviando contacto a Wix CMS:', err);
+    }
+
+    setIsSubmitting(false);
+    setIsSuccess(true);
 
     const encoded = encodeURIComponent(text);
     window.open(`https://wa.me/52${phoneNumber}?text=${encoded}`, '_blank');
@@ -100,7 +124,7 @@ export default function Contact() {
             {/* Section: Basic info */}
             <div>
               <h3 style={{ fontSize: '1.2rem', marginBottom: '1.2rem', color: 'var(--accent-gold)' }}>1. Datos Personales</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.2rem' }}>
                 <div>
                   <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Nombre Completo *</label>
                   <input type="text" placeholder="Ej. Sofia Oramas" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -108,6 +132,10 @@ export default function Contact() {
                 <div>
                   <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Correo Electrónico *</label>
                   <input type="email" placeholder="Ej. sofia@mail.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Teléfono / WhatsApp</label>
+                  <input type="tel" placeholder="Ej. 55 1234 5678" value={phone} onChange={(e) => setPhone(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -129,10 +157,19 @@ export default function Contact() {
                 </div>
                 <div>
                   <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Fecha Deseada</label>
-                  <div style={{ position: 'relative' }}>
-                    <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ paddingLeft: '2.5rem' }} />
-                    <Calendar size={16} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  </div>
+                  <input 
+                    type="date" 
+                    value={date} 
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setDate(e.target.value)} 
+                    onClick={(e) => {
+                      try {
+                        if (typeof e.target.showPicker === 'function') {
+                          e.target.showPicker();
+                        }
+                      } catch (err) {}
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -213,10 +250,19 @@ export default function Contact() {
             {/* Submit */}
             <button 
               type="submit" 
+              disabled={isSubmitting}
               className="btn-premium btn-gold interactive"
               style={{ justifyContent: 'center', padding: '1rem', fontSize: '0.9rem', marginTop: '1rem' }}
             >
-              <Send size={16} /> Enviar Presupuesto por WhatsApp
+              {isSubmitting ? (
+                <span>Enviando al estudio...</span>
+              ) : isSuccess ? (
+                <span>✅ ¡Solicitud Enviada a WhatsApp!</span>
+              ) : (
+                <>
+                  <Send size={16} /> Enviar Presupuesto por WhatsApp
+                </>
+              )}
             </button>
 
           </form>

@@ -1,19 +1,35 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, ArrowRight } from 'lucide-react';
+import { sendLeadToWix } from '../lib/wixLeads';
 
 export default function Footer({ setTab }) {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
-  const handleSubscribe = (e) => {
+  const handleSubscribe = async (e) => {
     e.preventDefault();
     if (email.trim()) {
+      const emailToSend = email.trim();
       setSubscribed(true);
       setEmail('');
+      try {
+        await sendLeadToWix({
+          email: emailToSend,
+          origen: 'Footer Newsletter (Suscripción)',
+          title: `Newsletter: ${emailToSend} — [Footer]`
+        });
+      } catch (err) {
+        console.error('Error enviando newsletter a CMS:', err);
+      }
     }
   };
 
   const handleWhatsappCall = () => {
+    sendLeadToWix({
+      origen: 'Footer WhatsApp Directo',
+      mensaje: 'Click en botón de WhatsApp del Footer: Consulta de Fotografía',
+      title: 'Consulta WhatsApp Footer'
+    });
     const phoneNumber = "5662914092";
     const encoded = encodeURIComponent("Hola me interesa información de su servicio de Fotografía");
     window.open(`https://wa.me/52${phoneNumber}?text=${encoded}`, '_blank');
@@ -126,13 +142,15 @@ export default function Footer({ setTab }) {
         {/* Center Column: Services & Navigation */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <h4 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--accent-gold)' }}>Servicios</h4>
-          <a href="#cumple" onClick={(e) => { e.preventDefault(); setTab('service-cumple'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Cumpleaños</a>
-          <a href="#xv" onClick={(e) => { e.preventDefault(); setTab('service-xv'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">XV Años</a>
-          <a href="#maternidad" onClick={(e) => { e.preventDefault(); setTab('service-maternidad'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Maternidad</a>
-          <a href="#casual" onClick={(e) => { e.preventDefault(); setTab('service-casual'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Sesiones Casuales</a>
-          <a href="#graduacion" onClick={(e) => { e.preventDefault(); setTab('service-graduacion'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Graduación</a>
-          <a href="#parejas" onClick={(e) => { e.preventDefault(); setTab('service-parejas'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Parejas</a>
-          <a href="#packages" onClick={(e) => { e.preventDefault(); setTab('packages'); }} style={{ color: 'var(--accent-gold)', textDecoration: 'none', fontSize: '0.9rem', marginTop: '0.4rem', fontWeight: '500' }} className="interactive">Todos los paquetes →</a>
+          <a href="/servicios" onClick={(e) => { e.preventDefault(); setTab('services'); }} style={{ color: 'var(--accent-gold)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '600' }} className="interactive">Catálogo de Servicios →</a>
+          <a href="/servicio-cumple" onClick={(e) => { e.preventDefault(); setTab('service-cumple'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Cumpleaños</a>
+          <a href="/servicio-xv" onClick={(e) => { e.preventDefault(); setTab('service-xv'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">XV Años</a>
+          <a href="/servicio-maternidad" onClick={(e) => { e.preventDefault(); setTab('service-maternidad'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Maternidad</a>
+          <a href="/servicio-casual" onClick={(e) => { e.preventDefault(); setTab('service-casual'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Sesiones Casuales</a>
+          <a href="/servicio-graduacion" onClick={(e) => { e.preventDefault(); setTab('service-graduacion'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Graduación</a>
+          <a href="/servicio-parejas" onClick={(e) => { e.preventDefault(); setTab('service-parejas'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Parejas</a>
+          <a href="/zonas" onClick={(e) => { e.preventDefault(); setTab('zonas'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Directorio de Zonas</a>
+          <a href="/cotizador" onClick={(e) => { e.preventDefault(); setTab('cotizador'); }} style={{ color: 'var(--accent-gold)', textDecoration: 'none', fontSize: '0.9rem', marginTop: '0.4rem', fontWeight: '600' }} className="interactive">Cotizador Interactivo →</a>
         </div>
 
         {/* Center-Right: Studio Location Info */}
@@ -239,7 +257,8 @@ export default function Footer({ setTab }) {
         fontSize: '0.8rem'
       }}>
         <p>© {new Date().getFullYear()} Buena Toma Fotografía. Todos los derechos reservados.</p>
-        <div style={{ display: 'flex', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+          <a href="/zonas" onClick={(e) => { e.preventDefault(); setTab('zonas'); }} style={{ color: 'var(--accent-gold)', textDecoration: 'none', fontWeight: '500' }} className="interactive">Zonas</a>
           <a href="#privacy" style={{ color: 'var(--text-muted)', textDecoration: 'none' }} className="interactive">Aviso de Privacidad</a>
           <a href="#terms" style={{ color: 'var(--text-muted)', textDecoration: 'none' }} className="interactive">Términos del Servicio</a>
         </div>

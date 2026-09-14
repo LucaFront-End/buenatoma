@@ -1,7 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowRight, Zap, Award, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { sendLeadToWix } from '../lib/wixLeads';
 
-export default function Home({ setTab }) {
+export default function Home({ 
+  setTab, 
+  overrideTitle, 
+  overrideSubtitle, 
+  overrideBadge, 
+  overrideWhatsapp, 
+  overrideLocation, 
+  _landingData 
+}) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [tilt, setTilt] = useState({ x: 0, y: 0 }); // 3D Tilt angles
   const [flashActive, setFlashActive] = useState(false); // Viewport shutter flash
@@ -481,19 +490,47 @@ export default function Home({ setTab }) {
                   gap: '8px',
                   marginBottom: '1rem'
                 }}>
-                  <Sparkles size={16} /> Buena Toma Estudio
+                  <Sparkles size={16} />
+                  {overrideBadge ? (
+                    <span>{overrideBadge}{overrideLocation ? ` • ${overrideLocation}` : ''}</span>
+                  ) : overrideLocation ? (
+                    <span>Buena Toma Estudio • {overrideLocation}</span>
+                  ) : (
+                    <span>Buena Toma Estudio</span>
+                  )}
                 </span>
                 
                 <h1 style={{
-                  fontSize: 'clamp(2.5rem, 5vw, 4.2rem)',
+                  fontSize: 'clamp(2.2rem, 5vw, 4.2rem)',
                   lineHeight: '1.15',
                   marginBottom: '1.2rem',
                   fontWeight: '700'
                 }}>
-                  Fotografía que <br />
-                  <span style={{ fontFamily: 'var(--font-sans)', fontStyle: 'italic', fontWeight: '300', color: 'var(--accent-gold)' }}>
-                    cuenta historias.
-                  </span>
+                  {overrideTitle ? (
+                    (() => {
+                      const enIndex = overrideTitle.toLowerCase().lastIndexOf(' en ');
+                      if (enIndex !== -1) {
+                        const mainPart = overrideTitle.slice(0, enIndex);
+                        const locPart = overrideTitle.slice(enIndex + 4);
+                        return (
+                          <>
+                            {mainPart} <br />
+                            <span style={{ fontFamily: 'var(--font-sans)', fontStyle: 'italic', fontWeight: '300', color: 'var(--accent-gold)' }}>
+                              en {locPart}
+                            </span>
+                          </>
+                        );
+                      }
+                      return overrideTitle;
+                    })()
+                  ) : (
+                    <>
+                      Fotografía que <br />
+                      <span style={{ fontFamily: 'var(--font-sans)', fontStyle: 'italic', fontWeight: '300', color: 'var(--accent-gold)' }}>
+                        cuenta historias.
+                      </span>
+                    </>
+                  )}
                 </h1>
                 
                 <p style={{
@@ -503,9 +540,15 @@ export default function Home({ setTab }) {
                   maxWidth: '520px',
                   fontWeight: '300'
                 }}>
-                  <span className="desktop-only">Pasa el mouse sobre la foto para inclinarla en 3D. </span>
-                  <span className="mobile-only">Toca o desliza sobre las fotos. </span>
-                  Alterna los sets decorados de nuestro estudio en CDMX.
+                  {overrideSubtitle ? (
+                    <span>{overrideSubtitle}</span>
+                  ) : (
+                    <>
+                      <span className="desktop-only">Pasa el mouse sobre la foto para inclinarla en 3D. </span>
+                      <span className="mobile-only">Toca o desliza sobre las fotos. </span>
+                      Alterna los sets decorados de nuestro estudio en CDMX.
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -956,11 +999,22 @@ export default function Home({ setTab }) {
             <span style={{ color: 'var(--accent-gold)', fontStyle: 'italic', fontFamily: 'var(--font-serif)' }}>próxima historia</span>?
           </h2>
           <button 
-            onClick={() => setTab('contact')} 
+            onClick={() => {
+              if (overrideWhatsapp) {
+                sendLeadToWix({
+                  origen: `Landing Dinámica (${overrideLocation || 'General'})`,
+                  mensaje: `Click en CTA Reservar/Consultar por WhatsApp (${overrideLocation || 'General'})`,
+                  title: `Consulta Landing Dinámica (${overrideLocation || 'General'})`
+                });
+                window.open(overrideWhatsapp, '_blank');
+              } else {
+                setTab('contact');
+              }
+            }} 
             className="btn-premium btn-gold interactive"
             style={{ padding: '1.2rem 2.5rem', fontSize: '0.9rem' }}
           >
-            Reservar Sesión Ahora
+            {overrideWhatsapp ? 'Consultar por WhatsApp' : 'Reservar Sesión Ahora'}
           </button>
         </div>
       </section>

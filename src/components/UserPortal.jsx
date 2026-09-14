@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Lock, Download, RefreshCw, Star } from 'lucide-react';
 
-export default function UserPortal({ isOpen, onClose }) {
+export default function UserPortal({ isOpen, onClose, setTab }) {
   const [bookingId, setBookingId] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState([]);
@@ -165,8 +165,60 @@ export default function UserPortal({ isOpen, onClose }) {
                 Ingresar al Portal
               </button>
               
-              <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                ¿Problemas para acceder? <a href="https://wa.me/525662914092" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-gold)' }} className="interactive">Soporte en WhatsApp</a>
+              <div style={{
+                marginTop: '0.8rem',
+                padding: '1rem',
+                backgroundColor: 'rgba(255, 212, 2, 0.08)',
+                border: '1px solid rgba(255, 212, 2, 0.3)',
+                borderRadius: '8px',
+                textAlign: 'center'
+              }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--accent-gold)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '4px' }}>
+                  ✨ Demo de Galería de Cliente (Pixieset)
+                </span>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
+                  Prueba la experiencia de selección y entrega de fotografías:
+                </p>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onClose) onClose();
+                      if (setTab) setTab('gallery-selection');
+                    }}
+                    style={{
+                      padding: '0.45rem 0.9rem',
+                      backgroundColor: '#ffd402',
+                      color: '#09090b',
+                      border: 'none',
+                      borderRadius: '20px',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    1. Selección de Fotos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onClose) onClose();
+                      if (setTab) setTab('gallery-delivery');
+                    }}
+                    style={{
+                      padding: '0.45rem 0.9rem',
+                      backgroundColor: '#22c55e',
+                      color: '#09090b',
+                      border: 'none',
+                      borderRadius: '20px',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    2. ¡Ya quedaron! (Entrega)
+                  </button>
+                </div>
               </div>
             </form>
           ) : (

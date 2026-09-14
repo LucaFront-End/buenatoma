@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Users, MessageCircle, Heart, Sparkles } from 'lucide-react';
+import { sendLeadToWix } from '../lib/wixLeads';
 
 export default function Community() {
   const [memberEmail, setMemberEmail] = useState('');
@@ -42,11 +43,21 @@ export default function Community() {
     { title: "Tendencias de maquillaje para XV Años en este 2026", replies: 28, category: "Tendencias" }
   ];
 
-  const handleJoin = (e) => {
+  const handleJoin = async (e) => {
     e.preventDefault();
     if (memberEmail.trim()) {
+      const emailToSend = memberEmail.trim();
       setJoined(true);
       setMemberEmail('');
+      try {
+        await sendLeadToWix({
+          email: emailToSend,
+          origen: 'Club Comunidad Exclusiva (Cupón 10% VIP)',
+          title: `Comunidad VIP: ${emailToSend} — [Comunidad]`
+        });
+      } catch (err) {
+        console.error('Error enviando registro de comunidad a CMS:', err);
+      }
     }
   };
 

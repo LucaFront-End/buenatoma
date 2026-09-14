@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Trash2, ArrowRight } from 'lucide-react';
+import { sendLeadToWix } from '../lib/wixLeads';
 
 export default function Cart({ isOpen, toggleCart, cartItems, removeFromCart, clearCart }) {
   const total = cartItems.reduce((acc, item) => acc + item.price, 0);
@@ -23,6 +24,12 @@ export default function Cart({ isOpen, toggleCart, cartItems, removeFromCart, cl
     
     text += `**Total estimado: $${total.toLocaleString('es-MX')} MXN**\n\n`;
     text += "¿Tienen disponibilidad de fechas?";
+
+    sendLeadToWix({
+      origen: 'Carrito de Compra / Checkout',
+      mensaje: text,
+      title: `Pedido Carrito ($${total.toLocaleString('es-MX')} MXN) — [Checkout Carrito]`
+    });
 
     const encodedText = encodeURIComponent(text);
     window.open(`https://wa.me/52${phoneNumber}?text=${encodedText}`, '_blank');

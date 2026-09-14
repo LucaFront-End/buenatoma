@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, ShoppingBag, User, ArrowRight, ChevronDown } from 'lucide-react';
+import { sendLeadToWix } from '../lib/wixLeads';
 
 export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togglePortal }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,6 +29,7 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
   const menuItems = [
     { name: 'Inicio', id: 'home' },
     { name: 'Servicios', id: 'services', isDropdown: true },
+    { name: 'Cotizador', id: 'cotizador' },
     { name: 'Portafolio', id: 'portfolio' },
     { name: 'Comunidad', id: 'community' },
     { name: 'Contacto', id: 'contact' }
@@ -40,12 +42,17 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
   };
 
   const handleWhatsappCotizar = () => {
+    sendLeadToWix({
+      origen: 'Navbar CTA (Cotizar WhatsApp)',
+      mensaje: 'Click en botón Cotizar por WhatsApp de la barra de navegación',
+      title: 'Consulta WhatsApp Navbar'
+    });
     const phoneNumber = "5662914092";
     const text = encodeURIComponent("Hola me interesa información de su servicio de Fotografía en Reforma 284, CDMX");
     window.open(`https://wa.me/52${phoneNumber}?text=${text}`, '_blank');
   };
 
-  const isServiceActive = currentTab.startsWith('service-') || currentTab === 'packages';
+  const isServiceActive = currentTab === 'services' || currentTab === 'servicios' || currentTab.startsWith('service-');
 
   return (
     <>
@@ -105,7 +112,7 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
                   onMouseLeave={() => setDropdownOpen(false)}
                 >
                   <button
-                    onClick={() => setTab('packages')}
+                    onClick={() => handleNavClick('services')}
                     className="interactive"
                     style={{
                       background: 'none',
@@ -188,14 +195,14 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
                           </button>
                         ))}
 
-                        <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '0.4rem', paddingTop: '0.4rem' }}>
+                        <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '0.4rem', paddingTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <button
-                            onClick={() => handleNavClick('packages')}
+                            onClick={() => handleNavClick('services')}
                             className="interactive"
                             style={{
                               display: 'block',
                               width: '100%',
-                              padding: '0.6rem 1.2rem',
+                              padding: '0.5rem 1.2rem',
                               background: 'none',
                               border: 'none',
                               textAlign: 'left',
@@ -207,7 +214,26 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-input)'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                           >
-                            Ver todos los paquetes →
+                            Ver catálogo de servicios (/servicios) →
+                          </button>
+                          <button
+                            onClick={() => handleNavClick('cotizador')}
+                            className="interactive"
+                            style={{
+                              display: 'block',
+                              width: '100%',
+                              padding: '0.5rem 1.2rem',
+                              background: 'none',
+                              border: 'none',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              color: 'var(--text-secondary)',
+                              fontSize: '0.82rem'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-input)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            Cotizador de paquetes →
                           </button>
                         </div>
                       </div>
@@ -217,6 +243,8 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
               );
             }
 
+            const isActive = currentTab === item.id || (item.id === 'cotizador' && (currentTab === 'cotizador' || currentTab === 'packages'));
+
             return (
               <button
                 key={item.id}
@@ -225,8 +253,8 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: currentTab === item.id ? 'var(--accent-gold)' : 'var(--text-secondary)',
-                  fontWeight: currentTab === item.id ? '600' : '400',
+                  color: isActive ? 'var(--accent-gold)' : 'var(--text-secondary)',
+                  fontWeight: isActive ? '600' : '400',
                   fontSize: '0.9rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.1em',
@@ -410,15 +438,26 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
             {/* Mobile Services Accordion */}
             <div>
               <div 
-                onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="menu-link interactive"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
-                <div>
+                <div 
+                  onClick={() => handleNavClick('services')}
+                  style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center' }}
+                >
                   <span className="menu-number">02</span>
                   Servicios
                 </div>
-                <ChevronDown size={20} style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--accent-gold)' }} />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen(!dropdownOpen);
+                  }}
+                  aria-label="Desplegar servicios"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center' }}
+                >
+                  <ChevronDown size={22} style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--accent-gold)' }} />
+                </button>
               </div>
 
               {/* Submenu for individual services */}
@@ -432,10 +471,26 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
                   marginBottom: '0.8rem',
                   borderLeft: '2px solid var(--accent-gold)'
                 }}>
+                  <a
+                    href="/servicios"
+                    onClick={(e) => { e.preventDefault(); handleNavClick('services'); }}
+                    className="interactive"
+                    style={{
+                      color: currentTab === 'services' ? 'var(--accent-gold)' : '#ffffff',
+                      fontSize: '1.05rem',
+                      fontWeight: '700',
+                      textDecoration: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    ✨ Catálogo de Servicios (/servicios)
+                  </a>
                   {servicesList.map((svc) => (
                     <a
                       key={svc.id}
-                      href={`#${svc.id}`}
+                      href={`/servicio-${svc.id.replace('service-', '')}`}
                       onClick={(e) => { e.preventDefault(); handleNavClick(svc.id); }}
                       className="interactive"
                       style={{
@@ -452,14 +507,25 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
                     </a>
                   ))}
                   <a
-                    href="#packages"
-                    onClick={(e) => { e.preventDefault(); handleNavClick('packages'); }}
+                    href="/cotizador"
+                    onClick={(e) => { e.preventDefault(); handleNavClick('cotizador'); }}
                     style={{ color: 'var(--accent-gold)', fontSize: '0.95rem', textDecoration: 'none', marginTop: '0.4rem', fontWeight: '600' }}
                   >
-                    Ver comparativa de todos los paquetes →
+                    Cotizador interactivo de paquetes →
                   </a>
                 </div>
               )}
+            </div>
+
+            <div>
+              <a
+                href="#cotizador"
+                onClick={(e) => { e.preventDefault(); handleNavClick('cotizador'); }}
+                className="menu-link interactive"
+              >
+                <span className="menu-number">03</span>
+                Cotizador
+              </a>
             </div>
 
             <div>
@@ -468,7 +534,7 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
                 onClick={(e) => { e.preventDefault(); handleNavClick('portfolio'); }}
                 className="menu-link interactive"
               >
-                <span className="menu-number">03</span>
+                <span className="menu-number">04</span>
                 Portafolio
               </a>
             </div>
@@ -479,7 +545,7 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
                 onClick={(e) => { e.preventDefault(); handleNavClick('community'); }}
                 className="menu-link interactive"
               >
-                <span className="menu-number">04</span>
+                <span className="menu-number">05</span>
                 Comunidad
               </a>
             </div>
@@ -490,7 +556,7 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
                 onClick={(e) => { e.preventDefault(); handleNavClick('contact'); }}
                 className="menu-link interactive"
               >
-                <span className="menu-number">05</span>
+                <span className="menu-number">06</span>
                 Contacto
               </a>
             </div>
@@ -499,7 +565,7 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
           {/* Social Links & Mobile Call to Action in Menu */}
           <div style={{
             marginTop: '3rem',
-            borderTop: '1px solid var(--border-color)',
+            borderTop: '1px solid rgba(255,255,255,0.12)',
             paddingTop: '2rem',
             display: 'flex',
             justifyContent: 'space-between',
@@ -509,25 +575,25 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
             zIndex: 2
           }}>
             <div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <p style={{ color: 'var(--accent-gold)', fontSize: '0.8rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: '700' }}>
                 Estudio CDMX
               </p>
-              <p style={{ color: 'var(--text-primary)', fontSize: '1rem', marginTop: '0.3rem', fontFamily: 'var(--font-serif)' }}>
+              <p style={{ color: '#ffffff', fontSize: '1.05rem', marginTop: '0.35rem', fontFamily: 'var(--font-serif)', fontWeight: '500', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
                 Paseo de la Reforma 284, CDMX
               </p>
-              <p style={{ color: 'var(--accent-gold)', fontSize: '0.9rem', marginTop: '0.2rem' }}>
+              <p style={{ color: 'var(--accent-gold)', fontSize: '0.95rem', marginTop: '0.25rem', fontWeight: '600' }}>
                 566 291 4092 (WhatsApp)
               </p>
             </div>
 
             <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-              <a href="https://www.facebook.com/buenatoma.mx" target="_blank" rel="noreferrer" className="interactive" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }}>
+              <a href="https://www.facebook.com/buenatoma.mx" target="_blank" rel="noreferrer" className="interactive" style={{ color: 'rgba(255,255,255,0.85)', textDecoration: 'none', fontSize: '0.9rem' }}>
                 Facebook
               </a>
-              <a href="http://instagram.com/buenatoma.mx" target="_blank" rel="noreferrer" className="interactive" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }}>
+              <a href="http://instagram.com/buenatoma.mx" target="_blank" rel="noreferrer" className="interactive" style={{ color: 'rgba(255,255,255,0.85)', textDecoration: 'none', fontSize: '0.9rem' }}>
                 Instagram
               </a>
-              <span style={{ color: 'var(--accent-gold)', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--accent-gold)', fontSize: '0.85rem', fontWeight: '600' }}>
                 @buenatoma.mx
               </span>
             </div>

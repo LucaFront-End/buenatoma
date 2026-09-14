@@ -9,6 +9,7 @@ import {
   MessageCircle, 
   ChevronRight
 } from 'lucide-react';
+import { sendLeadToWix } from '../lib/wixLeads';
 
 // Reusable SVG props and studio set graphics
 const StudioLightSVG = ({ side }) => (
@@ -442,6 +443,18 @@ export default function ServicePage({ serviceId = 'cumple', setTab, addToCart })
   const [clientNotes, setClientNotes] = useState('');
   const [totalPrice, setTotalPrice] = useState(service.price);
   const [addedMessage, setAddedMessage] = useState(false);
+  const [mobileStep, setMobileStep] = useState(1);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    setMobileStep(1);
+  }, [serviceId]);
 
   // Dynamic price calculation
   useEffect(() => {
@@ -535,6 +548,12 @@ export default function ServicePage({ serviceId = 'cumple', setTab, addToCart })
     text += `\n*Total estimado:* $${totalPrice.toLocaleString('es-MX')} MXN\n\n`;
     text += `¿Tienen disponibilidad de agenda para esta sesión?`;
 
+    sendLeadToWix({
+      origen: `Configurador Servicio (${service.name})`,
+      mensaje: text,
+      title: `Reserva ${service.name} ($${totalPrice.toLocaleString('es-MX')} MXN) — [Configurador]`
+    });
+
     const encoded = encodeURIComponent(text);
     window.open(`https://wa.me/52${phoneNumber}?text=${encoded}`, '_blank');
   };
@@ -574,7 +593,7 @@ export default function ServicePage({ serviceId = 'cumple', setTab, addToCart })
           </button>
           <ChevronRight size={14} />
           <button 
-            onClick={() => setTab('packages')} 
+            onClick={() => setTab('services')} 
             className="interactive" 
             style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}
           >
@@ -778,176 +797,105 @@ export default function ServicePage({ serviceId = 'cumple', setTab, addToCart })
             {/* Left Column: The Tailored Form Options */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               
-              {/* Box 1: Included Features in Base Package */}
-              <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Check size={20} style={{ color: 'var(--accent-gold)' }} />
-                  Lo que incluye tu paquete base ($ {service.price.toLocaleString('es-MX')} MXN)
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.8rem' }}>
-                  {service.includes.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                      <span style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>✓</span>
-                      <span>{item}</span>
-                    </div>
-                  ))}
+              {/* Mobile Step Wizard Header */}
+              {isMobile && (
+                <div className="glass" style={{ padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color)', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-gold)' }}>
+                      PASO 0{mobileStep} / 05
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                      {mobileStep === 1 && '1. Base Incluida'}
+                      {mobileStep === 2 && '2. Maquillaje & Look'}
+                      {mobileStep === 3 && '3. Cuadro en Madera'}
+                      {mobileStep === 4 && '4. Extras & Topper'}
+                      {mobileStep === 5 && '5. Agenda & Reserva'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {[
+                      { step: 1, label: '1. Incluye' },
+                      { step: 2, label: '2. Look' },
+                      { step: 3, label: '3. Cuadro' },
+                      { step: 4, label: '4. Extras' },
+                      { step: 5, label: '5. Reserva' }
+                    ].map((s) => (
+                      <button
+                        key={s.step}
+                        onClick={() => setMobileStep(s.step)}
+                        className="interactive"
+                        style={{
+                          flex: 1,
+                          padding: '7px 2px',
+                          borderRadius: '6px',
+                          border: mobileStep === s.step ? '1px solid var(--accent-gold)' : '1px solid var(--border-color)',
+                          backgroundColor: mobileStep === s.step ? 'rgba(255, 212, 2, 0.15)' : 'var(--bg-input)',
+                          color: mobileStep === s.step ? 'var(--accent-gold)' : 'var(--text-muted)',
+                          fontSize: '0.72rem',
+                          fontWeight: mobileStep === s.step ? '700' : '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Box 1: Included Features in Base Package */}
+              {(!isMobile || mobileStep === 1) && (
+                <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
+                  <h3 style={{ fontSize: '1.2rem', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Check size={20} style={{ color: 'var(--accent-gold)' }} />
+                    Lo que incluye tu paquete base ($ {service.price.toLocaleString('es-MX')} MXN)
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.8rem' }}>
+                    {service.includes.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        <span style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>✓</span>
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {isMobile && (
+                    <button
+                      onClick={() => setMobileStep(2)}
+                      className="btn-premium btn-gold interactive"
+                      style={{ width: '100%', justifyContent: 'center', marginTop: '1.5rem', padding: '0.9rem', fontSize: '0.85rem' }}
+                    >
+                      Continuar al Paso 2: Maquillaje →
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Box 2: Styling & Makeup Option */}
-              <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>
-                  1. Peinado y Maquillaje Profesional en Estudio
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>
-                  Garantiza un acabado mate impecable y resistente a las luces de estudio, realizado por maquillistas especializadas.
-                </p>
-
-                <div 
-                  onClick={() => setMakeup(!makeup)}
-                  className="interactive"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '1.2rem 1.5rem',
-                    border: makeup ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
-                    backgroundColor: makeup ? 'rgba(255, 212, 2, 0.08)' : 'var(--bg-color)',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <div style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      border: makeup ? '2px solid var(--accent-gold)' : '2px solid var(--text-muted)',
-                      backgroundColor: makeup ? 'var(--accent-gold)' : 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--bg-color)'
-                    }}>
-                      {makeup && <Check size={14} strokeWidth={3} />}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>Agregar Maquillaje & Peinado Profesional</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>1 Hora antes del shoot en camerino privado</div>
-                    </div>
-                  </div>
-                  <div style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--accent-gold)' }}>
-                    +$800 <span style={{ fontSize: '0.75rem', fontWeight: '400', color: 'var(--text-muted)' }}>MXN</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Box 3: Printed Frames / Cuadros Físicos */}
-              <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>
-                  2. Cuadro Físico en Madera y Acabado Mate
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>
-                  Inmortaliza tu foto favorita con impresión de laboratorio montada sobre bastidor de madera maciza.
-                </p>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                  {[
-                    { id: 'none', name: 'Sin Cuadro Físico', desc: 'Solo archivos digitales', price: 0 },
-                    { id: 'resumen', name: 'Cuadro Resumen', desc: '61 x 23 cm (Panorámico)', price: 799 },
-                    { id: 'mediano', name: 'Cuadro Mediano', desc: '50 x 65 cm (Clásico sala)', price: 1599 },
-                    { id: 'grande', name: 'Cuadro Grande', desc: '61 x 76 cm (Gala estelar)', price: 2599 }
-                  ].map((f) => {
-                    const isSelected = frame === f.id;
-                    return (
-                      <div
-                        key={f.id}
-                        onClick={() => setFrame(f.id)}
-                        className="interactive"
-                        style={{
-                          padding: '1.2rem',
-                          border: isSelected ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
-                          backgroundColor: isSelected ? 'rgba(255, 212, 2, 0.08)' : 'var(--bg-color)',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                          <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{f.name}</span>
-                          {isSelected && <Check size={16} style={{ color: 'var(--accent-gold)' }} />}
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.8rem' }}>{f.desc}</div>
-                        <div style={{ fontWeight: '700', fontSize: '1rem', color: f.price > 0 ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
-                          {f.price > 0 ? `+$${f.price.toLocaleString('es-MX')} MXN` : 'Incluido'}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Box 4: Extra Retouched Photos */}
-              <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>
-                  3. Fotos Digitales Extras con Retoque
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>
-                  ¿No puedes decidirte por pocas fotos? Amplía el paquete con fotos retocadas adicionales.
-                </p>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                  {[
-                    { id: 'none', label: 'Sin fotos extras', count: `Base (${service.photosCount})`, price: 0 },
-                    { id: 'single', label: '+1 Foto Retocada', count: 'Retoque individual', price: 150 },
-                    { id: 'pack', label: '+6 Fotos Retocadas', count: 'Pack especial ahorro', price: 499 }
-                  ].map((p) => {
-                    const isSelected = extraPhotos === p.id;
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => setExtraPhotos(p.id)}
-                        className="interactive"
-                        style={{
-                          padding: '1.2rem',
-                          border: isSelected ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
-                          backgroundColor: isSelected ? 'rgba(255, 212, 2, 0.08)' : 'var(--bg-color)',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <div style={{ fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.3rem' }}>{p.label}</div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>{p.count}</div>
-                        <div style={{ fontWeight: '700', fontSize: '0.95rem', color: p.price > 0 ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
-                          {p.price > 0 ? `+$${p.price.toLocaleString('es-MX')} MXN` : 'Sin costo'}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Box 5: Service Specific Addons (e.g. Cake Topper for Cumpleaños) */}
-              {service.hasTopper && (
+              {(!isMobile || mobileStep === 2) && (
                 <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>
-                    4. Decoración Temática Especial
+                    1. Peinado y Maquillaje Profesional en Estudio
                   </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>
+                    Garantiza un acabado mate impecable y resistente a las luces de estudio, realizado por maquillistas especializadas.
+                  </p>
+
                   <div 
-                    onClick={() => setCakeTopper(!cakeTopper)}
+                    onClick={() => setMakeup(!makeup)}
                     className="interactive"
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '1.2rem 1.5rem',
-                      border: cakeTopper ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
-                      backgroundColor: cakeTopper ? 'rgba(255, 212, 2, 0.08)' : 'var(--bg-color)',
+                      border: makeup ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
+                      backgroundColor: makeup ? 'rgba(255, 212, 2, 0.08)' : 'var(--bg-color)',
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s ease'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -955,75 +903,308 @@ export default function ServicePage({ serviceId = 'cumple', setTab, addToCart })
                         width: '24px',
                         height: '24px',
                         borderRadius: '50%',
-                        border: cakeTopper ? '2px solid var(--accent-gold)' : '2px solid var(--text-muted)',
-                        backgroundColor: cakeTopper ? 'var(--accent-gold)' : 'transparent',
+                        border: makeup ? '2px solid var(--accent-gold)' : '2px solid var(--text-muted)',
+                        backgroundColor: makeup ? 'var(--accent-gold)' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'var(--bg-color)'
                       }}>
-                        {cakeTopper && <Check size={14} strokeWidth={3} />}
+                        {makeup && <Check size={14} strokeWidth={3} />}
                       </div>
                       <div>
-                        <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>Cake Topper Acrílico / Madera Personalizado</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Con tu nombre o número de cumpleaños para el pastel simulado</div>
+                        <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>Agregar Maquillaje & Peinado Profesional</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>1 Hora antes del shoot en camerino privado</div>
                       </div>
                     </div>
                     <div style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--accent-gold)' }}>
-                      +$150 <span style={{ fontSize: '0.75rem', fontWeight: '400', color: 'var(--text-muted)' }}>MXN</span>
+                      +$800 <span style={{ fontSize: '0.75rem', fontWeight: '400', color: 'var(--text-muted)' }}>MXN</span>
                     </div>
                   </div>
+
+                  {isMobile && (
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
+                      <button
+                        onClick={() => setMobileStep(1)}
+                        className="btn-premium interactive"
+                        style={{ flex: 1, justifyContent: 'center', padding: '0.9rem', fontSize: '0.85rem' }}
+                      >
+                        ← Anterior
+                      </button>
+                      <button
+                        onClick={() => setMobileStep(3)}
+                        className="btn-premium btn-gold interactive"
+                        style={{ flex: 1.5, justifyContent: 'center', padding: '0.9rem', fontSize: '0.85rem' }}
+                      >
+                        Paso 3: Cuadro →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Box 6: Date & Client Notes */}
-              <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>
-                  {service.hasTopper ? '5' : '4'}. Agenda y Notas Especiales (Opcional)
-                </h3>
-                <div 
-                  className="service-inputs-grid"
-                  style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1.2rem', marginTop: '1rem' }}
-                >
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
-                      Fecha sugerida:
-                    </label>
-                    <input 
-                      type="date"
-                      value={preferredDate}
-                      onChange={(e) => setPreferredDate(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.8rem',
-                        borderRadius: '6px',
-                        border: '1px solid var(--border-color)',
-                        backgroundColor: 'var(--bg-color)',
-                        fontSize: '0.9rem'
-                      }}
-                    />
+              {/* Box 3: Printed Frames / Cuadros Físicos */}
+              {(!isMobile || mobileStep === 3) && (
+                <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
+                  <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>
+                    2. Cuadro Físico en Madera y Acabado Mate
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>
+                    Inmortaliza tu foto favorita con impresión de laboratorio montada sobre bastidor de madera maciza.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    {[
+                      { id: 'none', name: 'Sin Cuadro Físico', desc: 'Solo archivos digitales', price: 0 },
+                      { id: 'resumen', name: 'Cuadro Resumen', desc: '61 x 23 cm (Panorámico)', price: 799 },
+                      { id: 'mediano', name: 'Cuadro Mediano', desc: '50 x 65 cm (Clásico sala)', price: 1599 },
+                      { id: 'grande', name: 'Cuadro Grande', desc: '61 x 76 cm (Gala estelar)', price: 2599 }
+                    ].map((f) => {
+                      const isSelected = frame === f.id;
+                      return (
+                        <div
+                          key={f.id}
+                          onClick={() => setFrame(f.id)}
+                          className="interactive"
+                          style={{
+                            padding: '1.2rem',
+                            border: isSelected ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
+                            backgroundColor: isSelected ? 'rgba(255, 212, 2, 0.08)' : 'var(--bg-color)',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                            <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{f.name}</span>
+                            {isSelected && <Check size={16} style={{ color: 'var(--accent-gold)' }} />}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.8rem' }}>{f.desc}</div>
+                          <div style={{ fontWeight: '700', fontSize: '1rem', color: f.price > 0 ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
+                            {f.price > 0 ? `+$${f.price.toLocaleString('es-MX')} MXN` : 'Incluido'}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
-                      ¿Tienes alguna idea o petición especial?
-                    </label>
-                    <input 
-                      type="text"
-                      placeholder="Ej. Colores preferidos, temáticas, etc."
-                      value={clientNotes}
-                      onChange={(e) => setClientNotes(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.8rem',
-                        borderRadius: '6px',
-                        border: '1px solid var(--border-color)',
-                        backgroundColor: 'var(--bg-color)',
-                        fontSize: '0.9rem'
-                      }}
-                    />
-                  </div>
+
+                  {isMobile && (
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
+                      <button
+                        onClick={() => setMobileStep(2)}
+                        className="btn-premium interactive"
+                        style={{ flex: 1, justifyContent: 'center', padding: '0.9rem', fontSize: '0.85rem' }}
+                      >
+                        ← Anterior
+                      </button>
+                      <button
+                        onClick={() => setMobileStep(4)}
+                        className="btn-premium btn-gold interactive"
+                        style={{ flex: 1.5, justifyContent: 'center', padding: '0.9rem', fontSize: '0.85rem' }}
+                      >
+                        Paso 4: Extras →
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Box 4: Extra Retouched Photos & Decor */}
+              {(!isMobile || mobileStep === 4) && (
+                <>
+                  <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>
+                      3. Fotos Digitales Extras con Retoque
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>
+                      ¿No puedes decidirte por pocas fotos? Amplía el paquete con fotos retocadas adicionales.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                      {[
+                        { id: 'none', label: 'Sin fotos extras', count: `Base (${service.photosCount})`, price: 0 },
+                        { id: 'single', label: '+1 Foto Retocada', count: 'Retoque individual', price: 150 },
+                        { id: 'pack', label: '+6 Fotos Retocadas', count: 'Pack especial ahorro', price: 499 }
+                      ].map((p) => {
+                        const isSelected = extraPhotos === p.id;
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => setExtraPhotos(p.id)}
+                            className="interactive"
+                            style={{
+                              padding: '1.2rem',
+                              border: isSelected ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
+                              backgroundColor: isSelected ? 'rgba(255, 212, 2, 0.08)' : 'var(--bg-color)',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div style={{ fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.3rem' }}>{p.label}</div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>{p.count}</div>
+                            <div style={{ fontWeight: '700', fontSize: '0.95rem', color: p.price > 0 ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
+                              {p.price > 0 ? `+$${p.price.toLocaleString('es-MX')} MXN` : 'Sin costo'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Box 5: Service Specific Addons (e.g. Cake Topper for Cumpleaños) */}
+                  {service.hasTopper && (
+                    <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>
+                        4. Decoración Temática Especial
+                      </h3>
+                      <div 
+                        onClick={() => setCakeTopper(!cakeTopper)}
+                        className="interactive"
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '1.2rem 1.5rem',
+                          border: cakeTopper ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
+                          backgroundColor: cakeTopper ? 'rgba(255, 212, 2, 0.08)' : 'var(--bg-color)',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            border: cakeTopper ? '2px solid var(--accent-gold)' : '2px solid var(--text-muted)',
+                            backgroundColor: cakeTopper ? 'var(--accent-gold)' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--bg-color)'
+                          }}>
+                            {cakeTopper && <Check size={14} strokeWidth={3} />}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>Cake Topper Acrílico / Madera Personalizado</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Con tu nombre o número de cumpleaños para el pastel simulado</div>
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--accent-gold)' }}>
+                          +$150 <span style={{ fontSize: '0.75rem', fontWeight: '400', color: 'var(--text-muted)' }}>MXN</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {isMobile && (
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
+                      <button
+                        onClick={() => setMobileStep(3)}
+                        className="btn-premium interactive"
+                        style={{ flex: 1, justifyContent: 'center', padding: '0.9rem', fontSize: '0.85rem' }}
+                      >
+                        ← Anterior
+                      </button>
+                      <button
+                        onClick={() => setMobileStep(5)}
+                        className="btn-premium btn-gold interactive"
+                        style={{ flex: 1.5, justifyContent: 'center', padding: '0.9rem', fontSize: '0.85rem' }}
+                      >
+                        Paso 5: Fecha & Reserva →
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Box 6: Date, Client Notes & Confirmation */}
+              {(!isMobile || mobileStep === 5) && (
+                <div className="glass" style={{ padding: '2rem', borderRadius: '10px' }}>
+                  <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>
+                    {service.hasTopper ? '5' : '4'}. Agenda y Notas Especiales (Opcional)
+                  </h3>
+                  <div 
+                    className="service-inputs-grid"
+                    style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1.2rem', marginTop: '1rem' }}
+                  >
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                        Fecha sugerida:
+                      </label>
+                      <input 
+                        type="date"
+                        value={preferredDate}
+                        onChange={(e) => setPreferredDate(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.8rem',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'var(--bg-color)',
+                          fontSize: '0.9rem'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                        ¿Tienes alguna idea o petición especial?
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="Ej. Colores preferidos, temáticas, etc."
+                        value={clientNotes}
+                        onChange={(e) => setClientNotes(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.8rem',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'var(--bg-color)',
+                          fontSize: '0.9rem'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {isMobile && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '1.5rem' }}>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          onClick={() => setMobileStep(4)}
+                          className="btn-premium interactive"
+                          style={{ flex: 1, justifyContent: 'center', padding: '0.9rem', fontSize: '0.85rem' }}
+                        >
+                          ← Paso 4
+                        </button>
+                        <button
+                          onClick={handleWhatsAppBooking}
+                          className="btn-premium btn-gold interactive"
+                          style={{ flex: 2, justifyContent: 'center', padding: '0.9rem', fontSize: '0.85rem' }}
+                        >
+                          <MessageCircle size={16} /> Reservar WhatsApp
+                        </button>
+                      </div>
+                      <button
+                        onClick={handleAddToCart}
+                        className="btn-premium interactive"
+                        style={{
+                          width: '100%',
+                          justifyContent: 'center',
+                          padding: '0.9rem',
+                          fontSize: '0.85rem',
+                          border: '1px solid var(--accent-gold)',
+                          color: 'var(--accent-gold)'
+                        }}
+                      >
+                        <ShoppingBag size={16} /> {addedMessage ? '¡Agregado al Carrito!' : 'Agregar al Carrito'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
             </div>
 
