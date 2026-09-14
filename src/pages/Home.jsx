@@ -503,7 +503,9 @@ export default function Home({ setTab }) {
                   maxWidth: '520px',
                   fontWeight: '300'
                 }}>
-                  Pasa el mouse sobre la foto para inclinarla en 3D. Desliza o usa las flechas inferiores para alternar los sets decorados de nuestro estudio.
+                  <span className="desktop-only">Pasa el mouse sobre la foto para inclinarla en 3D. </span>
+                  <span className="mobile-only">Toca o desliza sobre las fotos. </span>
+                  Alterna los sets decorados de nuestro estudio en CDMX.
                 </p>
               </div>
 
@@ -536,7 +538,7 @@ export default function Home({ setTab }) {
                     <span style={{ fontWeight: '700', fontSize: '1.4rem', color: 'var(--text-primary)' }}>{activeCategory.price} MXN</span>
                   </div>
                   <button 
-                    onClick={() => setTab('packages')}
+                    onClick={() => setTab(`service-${activeCategory.id}`)}
                     className="btn-premium btn-gold interactive"
                     style={{ padding: '0.5rem 1.2rem', fontSize: '0.7rem' }}
                   >

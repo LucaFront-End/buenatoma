@@ -12,6 +12,7 @@ import ProductPage from './pages/ProductPage';
 import Portfolio from './pages/Portfolio';
 import Community from './pages/Community';
 import Contact from './pages/Contact';
+import ServicePage from './pages/ServicePage';
 
 export default function App() {
   const [currentTab, setTab] = useState('home');
@@ -57,17 +58,22 @@ export default function App() {
   };
 
   const renderActivePage = () => {
+    if (currentTab.startsWith('service-')) {
+      const serviceId = currentTab.replace('service-', '');
+      return <ServicePage serviceId={serviceId} setTab={handleTabChange} addToCart={addToCart} />;
+    }
+
     switch (currentTab) {
       case 'home':
         return <Home setTab={handleTabChange} />;
       case 'packages':
-        return <ProductPage addToCart={addToCart} />;
+        return <ProductPage addToCart={addToCart} setTab={handleTabChange} />;
       case 'portfolio':
-        return <Portfolio />;
+        return <Portfolio setTab={handleTabChange} />;
       case 'community':
-        return <Community />;
+        return <Community setTab={handleTabChange} />;
       case 'contact':
-        return <Contact />;
+        return <Contact setTab={handleTabChange} />;
       default:
         return <Home setTab={handleTabChange} />;
     }

@@ -376,7 +376,7 @@ const RealSofaSVG = () => (
   </svg>
 );
 
-export default function ProductPage({ addToCart }) {
+export default function ProductPage({ addToCart, setTab }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
   const [selectedMakeup, setSelectedMakeup] = useState(false);
@@ -611,9 +611,38 @@ export default function ProductPage({ addToCart }) {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             <div>
-              <span style={{ color: 'var(--accent-gold)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: '600' }}>
-                {activeCategory.tagline}
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <span style={{ color: 'var(--accent-gold)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: '600' }}>
+                  {activeCategory.tagline}
+                </span>
+                {setTab && (
+                  <button 
+                    onClick={() => setTab(`service-${activeCategory.id}`)}
+                    className="interactive"
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--accent-gold)',
+                      borderRadius: '20px',
+                      padding: '0.3rem 0.8rem',
+                      color: 'var(--accent-gold)',
+                      fontSize: '0.78rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--accent-gold)';
+                      e.currentTarget.style.color = 'var(--bg-color)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--accent-gold)';
+                    }}
+                  >
+                    Ver página exclusiva de {activeCategory.name} →
+                  </button>
+                )}
+              </div>
               <h2 style={{ fontSize: '2.5rem', fontFamily: 'var(--font-serif)', margin: '0.4rem 0', color: 'var(--text-primary)' }}>
                 {getStepTitle(currentStep)}
               </h2>
@@ -914,15 +943,18 @@ export default function ProductPage({ addToCart }) {
         </div>
 
         {/* RIGHT COLUMN: High-Fidelity Studio diorama preview */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '2rem',
-          position: 'sticky',
-          top: '100px',
-          height: 'calc(100vh - 150px)',
-          justifyContent: 'flex-start'
-        }}>
+        <div 
+          className="configurator-preview-col"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2rem',
+            position: 'sticky',
+            top: '100px',
+            height: 'calc(100vh - 150px)',
+            justifyContent: 'flex-start'
+          }}
+        >
           
           {/* Visual viewport wrapper */}
           {currentStep < 5 ? (

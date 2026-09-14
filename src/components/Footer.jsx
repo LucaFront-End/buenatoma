@@ -39,91 +39,100 @@ export default function Footer({ setTab }) {
         <div>
           <div style={{ marginBottom: '1.5rem' }}>
             <img 
-              src="/images/logos/LOGO-01.png" 
+              src="/images/logos/LOGO-white-yellow.png" 
               alt="Buena Toma Logo" 
-              style={{ height: '50px', width: 'auto', objectFit: 'contain' }}
+              style={{ height: '95px', width: 'auto', objectFit: 'contain' }}
             />
           </div>
           <p style={{
             color: 'var(--text-secondary)',
             fontSize: '0.9rem',
             lineHeight: '1.7',
-            marginBottom: '2rem'
+            marginBottom: '1.8rem'
           }}>
             Estudio de fotografía profesional dedicado a capturar momentos espontáneos y convertirlos en piezas de arte atemporales. Creemos en la asimetría, la luz natural y las historias reales.
           </p>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <a 
-              href="https://facebook.com/asimetrico.mx" 
-              target="_blank" 
-              rel="noreferrer"
-              className="interactive"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: '1px solid var(--border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-secondary)',
-                transition: 'all 0.3s'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.color = 'var(--text-primary)';
-                e.currentTarget.style.borderColor = 'var(--accent-gold)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.color = 'var(--text-secondary)';
-                e.currentTarget.style.borderColor = 'var(--border-color)';
-              }}
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
-              </svg>
-            </a>
-            <a 
-              href="https://instagram.com/asimetrico.mx" 
-              target="_blank" 
-              rel="noreferrer"
-              className="interactive"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: '1px solid var(--border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-secondary)',
-                transition: 'all 0.3s'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.color = 'var(--text-primary)';
-                e.currentTarget.style.borderColor = 'var(--accent-gold)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.color = 'var(--text-secondary)';
-                e.currentTarget.style.borderColor = 'var(--border-color)';
-              }}
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-              </svg>
-            </a>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <a 
+                href="https://www.facebook.com/buenatoma.mx" 
+                target="_blank" 
+                rel="noreferrer"
+                title="Facebook @buenatoma.mx"
+                className="interactive"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-secondary)',
+                  transition: 'all 0.3s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                  e.currentTarget.style.borderColor = 'var(--accent-gold)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+                </svg>
+              </a>
+              <a 
+                href="http://instagram.com/buenatoma.mx" 
+                target="_blank" 
+                rel="noreferrer"
+                title="Instagram @buenatoma.mx"
+                className="interactive"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-secondary)',
+                  transition: 'all 0.3s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                  e.currentTarget.style.borderColor = 'var(--accent-gold)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                </svg>
+              </a>
+            </div>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', letterSpacing: '0.05em' }}>
+              @buenatoma.mx
+            </span>
           </div>
         </div>
 
-        {/* Center Column: Quick Navigation */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h4 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--accent-gold)' }}>Explorar</h4>
-          <a href="#home" onClick={(e) => { e.preventDefault(); setTab('home'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.95rem' }} className="interactive">Inicio</a>
-          <a href="#packages" onClick={(e) => { e.preventDefault(); setTab('packages'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.95rem' }} className="interactive">Paquetes de Fotos</a>
-          <a href="#portfolio" onClick={(e) => { e.preventDefault(); setTab('portfolio'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.95rem' }} className="interactive">Portafolio</a>
-          <a href="#community" onClick={(e) => { e.preventDefault(); setTab('community'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.95rem' }} className="interactive">Comunidad</a>
-          <a href="#contact" onClick={(e) => { e.preventDefault(); setTab('contact'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.95rem' }} className="interactive">Contacto</a>
+        {/* Center Column: Services & Navigation */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <h4 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--accent-gold)' }}>Servicios</h4>
+          <a href="#cumple" onClick={(e) => { e.preventDefault(); setTab('service-cumple'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Cumpleaños</a>
+          <a href="#xv" onClick={(e) => { e.preventDefault(); setTab('service-xv'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">XV Años</a>
+          <a href="#maternidad" onClick={(e) => { e.preventDefault(); setTab('service-maternidad'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Maternidad</a>
+          <a href="#casual" onClick={(e) => { e.preventDefault(); setTab('service-casual'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Sesiones Casuales</a>
+          <a href="#graduacion" onClick={(e) => { e.preventDefault(); setTab('service-graduacion'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Graduación</a>
+          <a href="#parejas" onClick={(e) => { e.preventDefault(); setTab('service-parejas'); }} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }} className="interactive">Parejas</a>
+          <a href="#packages" onClick={(e) => { e.preventDefault(); setTab('packages'); }} style={{ color: 'var(--accent-gold)', textDecoration: 'none', fontSize: '0.9rem', marginTop: '0.4rem', fontWeight: '500' }} className="interactive">Todos los paquetes →</a>
         </div>
 
         {/* Center-Right: Studio Location Info */}
@@ -133,16 +142,14 @@ export default function Footer({ setTab }) {
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
               <MapPin size={20} style={{ color: 'var(--accent-gold)', flexShrink: 0 }} />
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                Plaza Macayo, Calle Macayo #5<br />
-                Col. El Recreo, Villahermosa,<br />
-                Tabasco, México
+                Paseo de la Reforma 284,<br />
+                Ciudad de México, Ciudad de México,<br />
+                06600, MEX
               </p>
             </div>
             <div 
               style={{ display: 'flex', gap: '12px', alignItems: 'center' }} 
-              onClick={() => {
-                window.open('https://wa.me/525662914092?text=Hola%20me%20interesa%20informaci%C3%B3n%20de%20su%20servicio%20de%20Fotograf%C3%ADa', '_blank');
-              }}
+              onClick={handleWhatsappCall}
               className="interactive"
             >
               <Phone size={18} style={{ color: 'var(--accent-gold)', flexShrink: 0 }} />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Lock, Download, CheckCircle, RefreshCw, Star } from 'lucide-react';
+import { X, Lock, Download, RefreshCw, Star } from 'lucide-react';
 
 export default function UserPortal({ isOpen, onClose }) {
   const [bookingId, setBookingId] = useState('');
@@ -59,34 +59,42 @@ export default function UserPortal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      backgroundColor: 'rgba(0,0,0,0.85)',
-      backdropFilter: 'blur(10px)',
-      zIndex: 1300,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem'
-    }} onClick={onClose}>
-      
-      <div style={{
-        width: '100%',
-        maxWidth: isLoggedIn ? '1000px' : '450px',
-        maxHeight: '90vh',
-        backgroundColor: 'var(--bg-color)',
-        border: '1px solid var(--border-color)',
-        borderRadius: '8px',
+    <div 
+      className="user-portal-backdrop"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        backdropFilter: 'blur(10px)',
+        zIndex: 1300,
         display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-        animation: 'fadeIn 0.3s ease-out'
-      }} onClick={(e) => e.stopPropagation()}>
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem'
+      }} 
+      onClick={onClose}
+    >
+      
+      <div 
+        className="user-portal-modal"
+        style={{
+          width: '100%',
+          maxWidth: isLoggedIn ? '1000px' : '450px',
+          maxHeight: '90vh',
+          backgroundColor: 'var(--bg-color)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+          animation: 'fadeIn 0.3s ease-out'
+        }} 
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header */}
         <div style={{

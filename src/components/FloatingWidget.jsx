@@ -84,22 +84,28 @@ export default function FloatingWidget() {
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 1200, display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'flex-end' }}>
+    <div 
+      className="floating-widget-container"
+      style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 1200, display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'flex-end' }}
+    >
       
       {/* Interactive Chat window */}
       {isChatOpen && (
-        <div style={{
-          width: '360px',
-          height: '460px',
-          backgroundColor: 'var(--bg-color)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '16px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          animation: 'chatOpen 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
-        }}>
+        <div 
+          className="floating-chat-window"
+          style={{
+            width: '360px',
+            height: '460px',
+            backgroundColor: 'var(--bg-color)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '16px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'chatOpen 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+          }}
+        >
           {/* Header */}
           <div style={{
             padding: '1.2rem',
@@ -261,11 +267,11 @@ export default function FloatingWidget() {
       )}
 
       {/* Floating Buttons layout (Vertical Stack) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center' }}>
         {/* Chat Widget Toggle */}
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
-          className="interactive floating-elem"
+          className="interactive floating-elem floating-btn-action"
           style={{
             width: '60px',
             height: '60px',
@@ -288,7 +294,7 @@ export default function FloatingWidget() {
         {/* WhatsApp Floating CTA */}
         <button
           onClick={() => handleWhatsappDirect()}
-          className="interactive floating-elem"
+          className="interactive floating-elem floating-btn-action"
           style={{
             width: '60px',
             height: '60px',
@@ -321,6 +327,29 @@ export default function FloatingWidget() {
           transform: translateY(-4px) scale(1.05) !important;
           box-shadow: 0 12px 25px rgba(0,0,0,0.2) !important;
           z-index: 10;
+        }
+        @media (max-width: 768px) {
+          .floating-widget-container {
+            bottom: 16px !important;
+            right: 16px !important;
+            gap: 10px !important;
+          }
+          .floating-btn-action {
+            width: 48px !important;
+            height: 48px !important;
+          }
+          .floating-btn-action svg {
+            width: 22px !important;
+            height: 22px !important;
+          }
+          .floating-chat-window {
+            width: calc(100vw - 32px) !important;
+            max-width: 360px !important;
+            height: 68vh !important;
+            max-height: 440px !important;
+            right: 0 !important;
+            bottom: 60px !important;
+          }
         }
       `}</style>
     </div>

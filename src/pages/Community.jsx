@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, MessageCircle, Heart, Star, Sparkles } from 'lucide-react';
+import { Users, MessageCircle, Heart, Sparkles } from 'lucide-react';
 
 export default function Community() {
   const [memberEmail, setMemberEmail] = useState('');
@@ -38,7 +38,7 @@ export default function Community() {
   const forumTopics = [
     { title: "Tips de vestuario para sesiones casuales en exterior", replies: 32, category: "Guías" },
     { title: "¿Cómo preparar a tus niños para un shoot infantil sin que se estresen?", replies: 19, category: "Consejos" },
-    { title: "Nuestros spots preferidos para fotos en Villahermosa, Tabasco", replies: 45, category: "Locaciones" },
+    { title: "Nuestros spots preferidos para fotos en Ciudad de México", replies: 45, category: "Locaciones" },
     { title: "Tendencias de maquillaje para XV Años en este 2026", replies: 28, category: "Tendencias" }
   ];
 
@@ -67,7 +67,7 @@ export default function Community() {
       </section>
 
       {/* Grid Content */}
-      <div className="container" style={{
+      <div className="container community-grid" style={{
         display: 'grid',
         gridTemplateColumns: '1.6fr 1fr',
         gap: '4rem',

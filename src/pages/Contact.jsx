@@ -85,7 +85,7 @@ export default function Contact() {
       </section>
 
       {/* Grid Content */}
-      <div className="container" style={{
+      <div className="container contact-grid" style={{
         display: 'grid',
         gridTemplateColumns: '1.4fr 1fr',
         gap: '4rem',
@@ -281,7 +281,7 @@ export default function Contact() {
                 <div>
                   <h5 style={{ fontSize: '0.95rem', marginBottom: '0.2rem' }}>Ubicación del Estudio</h5>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.5' }}>
-                    Plaza Macayo, Calle Macayo #5 Col. El Recreo, Villahermosa, Tabasco
+                    Paseo de la Reforma 284, Ciudad de México, Ciudad de México, 06600, MEX
                   </p>
                 </div>
               </div>
@@ -303,6 +303,39 @@ export default function Contact() {
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                     hola@buenatoma.mx
                   </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <div style={{ width: '20px', display: 'flex', justifyContent: 'center', color: 'var(--accent-gold)', fontWeight: 'bold', fontSize: '1.1rem', lineHeight: '1' }}>
+                  @
+                </div>
+                <div>
+                  <h5 style={{ fontSize: '0.95rem', marginBottom: '0.2rem' }}>Redes Sociales</h5>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <a 
+                      href="http://instagram.com/buenatoma.mx" 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      style={{ color: 'var(--accent-gold)', fontSize: '0.85rem', textDecoration: 'none' }}
+                      className="interactive"
+                    >
+                      Instagram
+                    </a>
+                    <span style={{ color: 'var(--text-muted)' }}>•</span>
+                    <a 
+                      href="https://www.facebook.com/buenatoma.mx" 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      style={{ color: 'var(--accent-gold)', fontSize: '0.85rem', textDecoration: 'none' }}
+                      className="interactive"
+                    >
+                      Facebook
+                    </a>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      (@buenatoma.mx)
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
