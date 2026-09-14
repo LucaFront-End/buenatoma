@@ -1641,8 +1641,15 @@ input[type="text"]:focus, input[type="email"]:focus, select:focus, textarea:focu
    Strictly preserving desktop layout and styling intact
    ========================================================= */
 
-.mobile-only {
+.mobile-only,
+.nav-hamburger-btn {
   display: none !important;
+}
+
+@media (min-width: 769px) {
+  .nav-mobile-overlay-menu {
+    display: none !important;
+  }
 }
 
 @media (max-width: 900px) {
@@ -1699,6 +1706,9 @@ input[type="text"]:focus, input[type="email"]:focus, select:focus, textarea:focu
 @media (max-width: 768px) {
   .mobile-only {
     display: inline !important;
+  }
+  .nav-hamburger-btn {
+    display: flex !important;
   }
   .desktop-only {
     display: none !important;

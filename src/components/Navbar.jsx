@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, X, ShoppingBag, User, ArrowRight, ChevronDown } from 'lucide-react';
 
 export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togglePortal }) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Ensure mobile menu closes automatically when switching to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768 && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen]);
 
   const servicesList = [
     { name: 'Cumpleaños 🎂', id: 'service-cumple', price: '$2,799' },
@@ -301,16 +312,15 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
             Cotizar Ahora <ArrowRight size={14} />
           </button>
 
-          {/* Fullscreen Menu Trigger */}
+          {/* Fullscreen Menu Trigger (Mobile Only) */}
           <button 
             onClick={() => setIsOpen(!isOpen)}
-            className="interactive"
-            aria-label="Abrir menú"
+            className="interactive nav-hamburger-btn"
+            aria-label="Abrir menú móvil"
             style={{
               background: 'none',
               border: 'none',
               color: 'var(--text-primary)',
-              display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               padding: '0.5rem',
@@ -324,7 +334,13 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
 
       {/* CSS adjustments to handle responsive visibility inline */}
       <style>{`
+        .nav-hamburger-btn {
+          display: none !important;
+        }
         @media (max-width: 768px) {
+          .nav-hamburger-btn {
+            display: flex !important;
+          }
           .desktop-only {
             display: none !important;
           }
@@ -336,11 +352,18 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
             height: 85px !important;
           }
         }
+        @media (min-width: 769px) {
+          .nav-mobile-overlay-menu {
+            display: none !important;
+          }
+        }
       `}</style>
 
       {/* Fullscreen Overlay Menu */}
       {isOpen && (
-        <div style={{
+        <div 
+          className="nav-mobile-overlay-menu"
+          style={{
           position: 'fixed',
           top: 0,
           left: 0,
