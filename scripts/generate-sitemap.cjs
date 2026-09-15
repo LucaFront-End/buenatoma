@@ -51,7 +51,8 @@ async function createWixClient() {
     auth: OAuthStrategy({ clientId: WIX_CLIENT_ID }),
   });
   try {
-    await wixClient.auth.generateVisitorTokens();
+    const tokens = await wixClient.auth.generateVisitorTokens();
+    await wixClient.auth.setTokens(tokens);
   } catch (err) {
     console.warn('[Sitemap] Warning generating visitor tokens:', err?.message || err);
   }
@@ -92,38 +93,53 @@ ${entries}
 
 // ─── 2. Dynamic Landing Pages (from Wix CMS LandingDinamicas) ─────────────────
 async function generateLandingsSitemap(wixClient) {
-  console.log(`📍 Consultando landings dinámicas en colección "${COLLECTION_ID}"...`);
+  console.log(`📍 Consultando TODAS las landings dinámicas en colección "${COLLECTION_ID}"...`);
   try {
-    const result = await wixClient.items
+    const allItems = [];
+    let pageNum = 1;
+
+    let page = await wixClient.items
       .query(COLLECTION_ID)
-      .limit(100)
+      .limit(1000)
       .find();
 
-    const items = result.items || [];
-    console.log(`   Se encontraron ${items.length} entradas en el CMS.`);
+    allItems.push(...(page.items || []));
+    process.stdout.write(`   Descargando página ${pageNum} (${allItems.length} landings)... `);
 
-    const entries = items
-      .map((item) => {
-        const data = item.data || item;
-        const slug = (data.slug || '').trim();
-        if (!slug) return null;
+    while (page.hasNext()) {
+      pageNum++;
+      page = await page.next();
+      allItems.push(...(page.items || []));
+      process.stdout.write(`pág ${pageNum} (${allItems.length})... `);
+    }
 
-        const lastmod = data._updatedDate
-          ? new Date(data._updatedDate).toISOString().split('T')[0]
-          : today();
+    console.log(`\n✅ Total de landings descargadas del CMS: ${allItems.length}`);
 
-        return buildUrlEntry(`${SITE_URL}/${slug}`, lastmod, 'weekly', '0.7');
-      })
-      .filter(Boolean)
-      .join('\n');
+    // Deduplicate by slug to ensure 100% valid unique sitemap URLs
+    const seenSlugs = new Set();
+    const entries = [];
+
+    for (const item of allItems) {
+      const data = item.data || item;
+      const rawSlug = (data.slug || '').trim().replace(/^\/+/, '');
+      if (!rawSlug || seenSlugs.has(rawSlug)) continue;
+      seenSlugs.add(rawSlug);
+
+      const lastmod = data._updatedDate
+        ? new Date(data._updatedDate).toISOString().split('T')[0]
+        : today();
+
+      entries.push(buildUrlEntry(`${SITE_URL}/${rawSlug}`, lastmod, 'weekly', '0.7'));
+    }
+
+    console.log(`   Se generaron ${entries.length} URLs únicas para sitemap-landings.xml.`);
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${entries}
+${entries.join('\n')}
 </urlset>`;
   } catch (err) {
     console.error('❌ Error consultando landings de Wix CMS:', err?.message || err);
-    // Return minimal valid urlset to avoid breaking pipeline
     return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 </urlset>`;
