@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { X, Lock, Download, RefreshCw, Star } from 'lucide-react';
+import { X, Lock, Download, RefreshCw, Star, Film, ShieldCheck, UserCheck, Camera } from 'lucide-react';
+import { useWixAuth } from '../context/WixAuthContext';
 
 export default function UserPortal({ isOpen, onClose, setTab }) {
+  const { currentUser, isFilmmaker, loginAsFilmmaker, loginAsClient, logout } = useWixAuth();
   const [bookingId, setBookingId] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState([]);
@@ -116,13 +118,41 @@ export default function UserPortal({ isOpen, onClose, setTab }) {
               </p>
             )}
           </div>
-          <button 
-            onClick={onClose} 
-            className="interactive"
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}
-          >
-            <X size={22} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {isFilmmaker && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onClose) onClose();
+                  if (setTab) setTab('filmmaker');
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                  border: '1px solid rgba(34, 197, 94, 0.4)',
+                  borderRadius: '16px',
+                  color: '#22c55e',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+                title="Abrir espacio de trabajo Filmmaker"
+              >
+                <Film size={13} />
+                Filmmaker Studio
+              </button>
+            )}
+            <button 
+              onClick={onClose} 
+              className="interactive"
+              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+            >
+              <X size={22} />
+            </button>
+          </div>
         </div>
 
         {/* Content Box */}
@@ -165,8 +195,110 @@ export default function UserPortal({ isOpen, onClose, setTab }) {
                 Ingresar al Portal
               </button>
               
+              {/* Filmmaker / Staff Access Badge & Link */}
               <div style={{
-                marginTop: '0.8rem',
+                padding: '1.2rem',
+                backgroundColor: isFilmmaker ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255, 212, 2, 0.05)',
+                border: isFilmmaker ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid var(--border-color)',
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.8rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Film size={18} style={{ color: isFilmmaker ? '#22c55e' : 'var(--accent-gold)' }} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                      {isFilmmaker ? 'Acceso Filmmaker Autorizado' : 'Área de Filmmakers & Editores'}
+                    </span>
+                  </div>
+                  {isFilmmaker && (
+                    <span style={{
+                      fontSize: '0.7rem',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                      color: '#22c55e',
+                      fontWeight: '700',
+                      border: '1px solid rgba(34, 197, 94, 0.3)'
+                    }}>
+                      Etiqueta: Filmmaker
+                    </span>
+                  )}
+                </div>
+
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                  {isFilmmaker 
+                    ? `Sesión iniciada como ${currentUser?.name} (${currentUser?.email}). Acceso completo a las 3 secciones: Fotos Selección, Retocar y Finales.` 
+                    : 'Si formas parte del equipo de fotografía o edición, ingresa para subir y bajar tomas en alta resolución.'}
+                </p>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isFilmmaker) loginAsFilmmaker();
+                      if (onClose) onClose();
+                      if (setTab) setTab('filmmaker');
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '0.65rem 1rem',
+                      backgroundColor: '#22c55e',
+                      color: '#09090b',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Film size={15} />
+                    Ir al Portal Filmmaker →
+                  </button>
+
+                  {!isFilmmaker ? (
+                    <button
+                      type="button"
+                      onClick={() => loginAsFilmmaker()}
+                      style={{
+                        padding: '0.65rem 0.9rem',
+                        backgroundColor: 'var(--bg-input)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Activar rol Filmmaker
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => loginAsClient()}
+                      style={{
+                        padding: '0.65rem 0.9rem',
+                        backgroundColor: 'var(--bg-input)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Ver como Cliente
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{
+                marginTop: '0.5rem',
                 padding: '1rem',
                 backgroundColor: 'rgba(255, 212, 2, 0.08)',
                 border: '1px solid rgba(255, 212, 2, 0.3)',

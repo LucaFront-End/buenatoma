@@ -20,7 +20,9 @@ import DynamicLanding from './pages/DynamicLanding';
 import ZonasPage from './pages/ZonasPage';
 import SharedGallery from './pages/SharedGallery';
 import PhotographerRetouch from './pages/PhotographerRetouch';
+import FilmmakerPortal from './pages/FilmmakerPortal';
 import RegistrationPromoPopup from './components/RegistrationPromoPopup';
+import { WixAuthProvider } from './context/WixAuthContext';
 
 // Route parser from browser pathname
 function getRouteFromPath(pathname) {
@@ -47,6 +49,10 @@ function getRouteFromPath(pathname) {
   if (cleanPath.startsWith('retocar/') || cleanPath.startsWith('fotografo/')) {
     const slug = cleanPath.replace(/^(retocar|fotografo)\//, '');
     return { tab: 'photographer-retouch', slug };
+  }
+
+  if (cleanPath === 'filmmaker' || cleanPath === 'produccion' || cleanPath === 'staff') {
+    return { tab: 'filmmaker', slug: null };
   }
 
   if (cleanPath === 'pedidademano' || cleanPath === 'galeria' || cleanPath === 'gallery') {
@@ -79,6 +85,7 @@ function getRouteFromPath(pathname) {
 
 function getPathForTab(tab, slug) {
   if (tab === 'home') return '/';
+  if (tab === 'filmmaker') return '/filmmaker';
   if (tab === 'client-gallery' && slug) return `/galeria/${slug}`;
   if (tab === 'shared-gallery' && slug) return `/compartir/${slug}`;
   if (tab === 'photographer-retouch' && slug) return `/retocar/${slug}`;
@@ -142,6 +149,9 @@ export default function App() {
     } else if (typeof target === 'string' && target.startsWith('retocar:')) {
       nextSlug = target.replace('retocar:', '');
       nextTab = 'photographer-retouch';
+    } else if (target === 'filmmaker') {
+      nextTab = 'filmmaker';
+      nextSlug = null;
     } else if (target === 'home') {
       nextTab = 'home';
       nextSlug = null;
@@ -192,14 +202,16 @@ export default function App() {
     'gallery-delivery',
     'client-gallery',
     'shared-gallery',
-    'photographer-retouch'
+    'photographer-retouch',
+    'filmmaker'
   ].includes(currentTab) || (typeof window !== 'undefined' && (
     window.location.pathname.startsWith('/pedidademano') ||
     window.location.pathname.startsWith('/galeria') ||
     window.location.pathname.startsWith('/seleccion') ||
     window.location.pathname.startsWith('/entrega') ||
     window.location.pathname.startsWith('/compartir') ||
-    window.location.pathname.startsWith('/retocar')
+    window.location.pathname.startsWith('/retocar') ||
+    window.location.pathname.startsWith('/filmmaker')
   ));
 
   const renderActivePage = () => {
@@ -211,6 +223,10 @@ export default function App() {
           onLandingLoaded={(landing) => setActiveLanding(landing)}
         />
       );
+    }
+
+    if (currentTab === 'filmmaker') {
+      return <FilmmakerPortal setTab={handleTabChange} />;
     }
 
     if (currentTab === 'client-gallery') {
@@ -247,6 +263,8 @@ export default function App() {
     switch (currentTab) {
       case 'home':
         return <Home setTab={handleTabChange} />;
+      case 'filmmaker':
+        return <FilmmakerPortal setTab={handleTabChange} />;
       case 'gallery':
         return <ClientGallery initialStage="selection" setTab={handleTabChange} slug={activeSlug || 'BNTM-26001'} />;
       case 'gallery-selection':
@@ -276,54 +294,56 @@ export default function App() {
 
   return (
     <WixContextProvider>
-      {/* Global Camera Shutter Page Transition Curtain */}
-      <div className={`global-shutter-curtain ${isTransitioning ? 'active' : ''}`}>
-        <div className="shutter-blade-top" />
-        <div className="shutter-blade-bottom" />
-      </div>
-      <div className={`shutter-flash-flare ${flashActive ? 'flash' : ''}`} />
+      <WixAuthProvider>
+        {/* Global Camera Shutter Page Transition Curtain */}
+        <div className={`global-shutter-curtain ${isTransitioning ? 'active' : ''}`}>
+          <div className="shutter-blade-top" />
+          <div className="shutter-blade-bottom" />
+        </div>
+        <div className={`shutter-flash-flare ${flashActive ? 'flash' : ''}`} />
 
-      {/* 1. Custom Cursor */}
-      <CustomCursor />
+        {/* 1. Custom Cursor */}
+        <CustomCursor />
 
-      {/* 2. Header / Nav */}
-      <Navbar 
-        currentTab={currentTab} 
-        setTab={handleTabChange} 
-        cartCount={cartItems.length} 
-        toggleCart={() => setIsCartOpen(!isCartOpen)} 
-        togglePortal={() => setIsPortalOpen(!isPortalOpen)}
-      />
+        {/* 2. Header / Nav */}
+        <Navbar 
+          currentTab={currentTab} 
+          setTab={handleTabChange} 
+          cartCount={cartItems.length} 
+          toggleCart={() => setIsCartOpen(!isCartOpen)} 
+          togglePortal={() => setIsPortalOpen(!isPortalOpen)}
+        />
 
-      {/* 3. Main View Area */}
-      <main style={{ minHeight: '80vh' }}>
-        {renderActivePage()}
-      </main>
+        {/* 3. Main View Area */}
+        <main style={{ minHeight: '80vh' }}>
+          {renderActivePage()}
+        </main>
 
-      {/* 4. Sliding Cart panel */}
-      <Cart 
-        isOpen={isCartOpen} 
-        toggleCart={() => setIsCartOpen(!isCartOpen)} 
-        cartItems={cartItems} 
-        removeFromCart={removeFromCart} 
-        clearCart={clearCart} 
-      />
+        {/* 4. Sliding Cart panel */}
+        <Cart 
+          isOpen={isCartOpen} 
+          toggleCart={() => setIsCartOpen(!isCartOpen)} 
+          cartItems={cartItems} 
+          removeFromCart={removeFromCart} 
+          clearCart={clearCart} 
+        />
 
-      {/* 5. Portal client selection Dashboard */}
-      <UserPortal 
-        isOpen={isPortalOpen} 
-        onClose={() => setIsPortalOpen(false)} 
-        setTab={handleTabChange}
-      />
+        {/* 5. Portal client selection Dashboard */}
+        <UserPortal 
+          isOpen={isPortalOpen} 
+          onClose={() => setIsPortalOpen(false)} 
+          setTab={handleTabChange}
+        />
 
-      {/* 6. Floating support & WhatsApp shortcuts (dynamically linked when on CMS landing) */}
-      <FloatingWidget customWhatsappUrl={activeLanding?.whatsapp} />
+        {/* 6. Floating support & WhatsApp shortcuts (dynamically linked when on CMS landing) */}
+        <FloatingWidget customWhatsappUrl={activeLanding?.whatsapp} />
 
-      {/* 7. Registration 10% OFF Promo Popup (suppressed on all gallery and proofing pages) */}
-      {!isGalleryPage && <RegistrationPromoPopup />}
+        {/* 7. Registration 10% OFF Promo Popup (suppressed on all gallery and proofing pages) */}
+        {!isGalleryPage && <RegistrationPromoPopup />}
 
-      {/* 8. Footer */}
-      <Footer setTab={handleTabChange} />
+        {/* 8. Footer */}
+        <Footer setTab={handleTabChange} />
+      </WixAuthProvider>
     </WixContextProvider>
   );
 }
