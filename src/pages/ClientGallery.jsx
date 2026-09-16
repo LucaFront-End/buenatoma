@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Heart, 
   Check, 
@@ -26,10 +27,53 @@ import {
   ZoomOut,
   RefreshCw,
   Eye,
-  Filter
+  Filter,
+  Package,
+  Plus,
+  ChevronDown,
+  ShieldCheck,
+  Info
 } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 import { sendLeadToWix } from '../lib/wixLeads';
+
+// Client session packages definition
+export const SESSION_PACKAGES = [
+  {
+    id: 'esencial',
+    name: 'Paquete Esencial',
+    included: 10,
+    price: 1999,
+    badge: '10 Fotos Incluidas',
+    description: '10 fotografías digitales de alta resolución con retoque fino.'
+  },
+  {
+    id: 'estandar',
+    name: 'Paquete Estándar',
+    included: 15,
+    price: 2799,
+    badge: '15 Fotos (Base)',
+    description: '15 fotografías digitales con retoque profesional + galería privada.'
+  },
+  {
+    id: 'deluxe',
+    name: 'Paquete Deluxe',
+    included: 25,
+    price: 4000,
+    badge: '25 Fotos (Popular)',
+    description: '25 fotografías retocadas de gala + 1 cuadro impreso.'
+  },
+  {
+    id: 'completo',
+    name: 'Paquete Todo Incluido',
+    included: 40,
+    price: 5500,
+    badge: '40 Fotos Completas',
+    description: '40 fotografías digitales con etalonaje cinematográfico completo.'
+  }
+];
+
+export const EXTRA_PHOTO_PRICE = 150; // $150 MXN per additional photo beyond package
 
 // Gallery dataset inspired by the reference Pixieset collection with high-res couple photography
 const GALLERY_ITEMS = [
@@ -183,6 +227,11 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
   // Stage state: 'selection' (Etapa 1: Selección de fotos) | 'delivery' (Etapa 2: Ya quedaron / Entrega final)
   const [stage, setStage] = useState(initialStage);
   
+  // Package Selection & Extras state
+  const [selectedPackageId, setSelectedPackageId] = useState('estandar');
+  const [isPackageDropdownOpen, setIsPackageDropdownOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
   // Selection proofing state
   const [selectedPhotos, setSelectedPhotos] = useState(['BT-03180', 'BT-03192', 'BT-03194', 'BT-03200']);
   const [photoNotes, setPhotoNotes] = useState({});
@@ -210,7 +259,14 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
   const [copiedLink, setCopiedLink] = useState(false);
 
   const galleryRef = useRef(null);
-  const LIMIT_PHOTOS = 10; // Included in standard package
+
+  // Dynamic Package & Extra Photos Calculations
+  const currentPackage = SESSION_PACKAGES.find(p => p.id === selectedPackageId) || SESSION_PACKAGES[1];
+  const packageLimit = currentPackage.included;
+  const totalSelected = selectedPhotos.length;
+  const includedCount = Math.min(totalSelected, packageLimit);
+  const extraCount = Math.max(0, totalSelected - packageLimit);
+  const extraPhotosCost = extraCount * EXTRA_PHOTO_PRICE;
 
   useSEO({
     title: stage === 'selection' 
@@ -219,6 +275,33 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
     description: 'Portal de clientes de Buena Toma Estudio. Visualiza, selecciona y descarga tu sesión de fotografía profesional en alta resolución.',
     canonical: typeof window !== 'undefined' ? window.location.href : '',
   });
+
+  // Lock body scroll when any modal or fullscreen viewer is active
+  useEffect(() => {
+    const isAnyModalActive = lightboxIndex !== null || isSlideshowOpen || isSubmitModalOpen || isDownloadModalOpen || isShareModalOpen || !!activeNotePhoto;
+    if (isAnyModalActive) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [lightboxIndex, isSlideshowOpen, isSubmitModalOpen, isDownloadModalOpen, isShareModalOpen, activeNotePhoto]);
+
+  // Anti-download keyboard shortcut guard
+  useEffect(() => {
+    const handleKeySecurity = (e) => {
+      // Block Ctrl+S, Cmd+S, Ctrl+P, Cmd+P, Ctrl+U
+      if ((e.ctrlKey || e.metaKey) && ['s', 'p', 'u'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+        setToastMessage('Descarga directa deshabilitada por protección de derechos de autor.');
+        setTimeout(() => setToastMessage(''), 3000);
+      }
+    };
+    window.addEventListener('keydown', handleKeySecurity);
+    return () => window.removeEventListener('keydown', handleKeySecurity);
+  }, []);
 
   const categories = ['Todas', 'La Propuesta', 'Retratos', 'Detalles', 'Celebración'];
 
@@ -235,17 +318,22 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
     }
   };
 
-  // Toggle selection of photo
+  // Toggle selection of photo - seamlessly adds extra photos without blocking!
   const togglePhotoSelection = (photoId, e) => {
     if (e) e.stopPropagation();
     if (selectedPhotos.includes(photoId)) {
       setSelectedPhotos(prev => prev.filter(id => id !== photoId));
     } else {
-      if (selectedPhotos.length >= LIMIT_PHOTOS) {
-        alert(`Has alcanzado el límite de ${LIMIT_PHOTOS} fotografías incluidas en tu paquete. Puedes deseleccionar alguna o agregar fotos extras.`);
-        return;
-      }
+      const nextCount = selectedPhotos.length + 1;
       setSelectedPhotos(prev => [...prev, photoId]);
+      
+      if (nextCount > packageLimit) {
+        const thisExtraNumber = nextCount - packageLimit;
+        setToastMessage(`✨ ¡Foto extra #${thisExtraNumber} agregada! (+$${EXTRA_PHOTO_PRICE} MXN)`);
+      } else {
+        setToastMessage(`✓ Foto seleccionada (${nextCount} de ${packageLimit} incluidas)`);
+      }
+      setTimeout(() => setToastMessage(''), 3000);
     }
   };
 
@@ -275,27 +363,32 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const notesSummary = selectedPhotos.map(id => {
+    const notesSummary = selectedPhotos.map((id, index) => {
       const note = photoNotes[id];
-      return `- ${id}${note ? ` (Nota: "${note}")` : ''}`;
+      const isExtra = index >= packageLimit;
+      return `- ${id}${isExtra ? ' [FOTO EXTRA +$150]' : ' [Incluida]'}${note ? ` (Nota: "${note}")` : ''}`;
     }).join('\n');
 
     const formattedMessage = `Selección de fotos para edición:\n` +
       `Cliente: ${clientName}\n` +
       `Teléfono: ${clientPhone}\n` +
       `Correo: ${clientEmail}\n` +
-      `Total seleccionadas: ${selectedPhotos.length} de ${LIMIT_PHOTOS}\n` +
+      `Paquete contratado: ${currentPackage.name} (${packageLimit} fotos incluidas)\n` +
+      `Fotos incluidas elegidas: ${includedCount} de ${packageLimit}\n` +
+      (extraCount > 0 ? `Fotos adicionales seleccionadas: ${extraCount} extras (+$${extraPhotosCost.toLocaleString('es-MX')} MXN a $${EXTRA_PHOTO_PRICE} c/u)\n` : '') +
+      (extraCount > 0 ? `Total adicional a pagar por extras: $${extraPhotosCost.toLocaleString('es-MX')} MXN\n` : '') +
+      `Total general de fotos seleccionadas: ${totalSelected}\n` +
       `Notas generales: ${generalNotes || 'Ninguna'}\n\n` +
-      `Fotos seleccionadas:\n${notesSummary}`;
+      `Desglose de fotos seleccionadas:\n${notesSummary}`;
 
     try {
       await sendLeadToWix({
         nombre: clientName,
         email: clientEmail,
         telefono: clientPhone,
-        origen: 'Galería Selección Pixieset (Buena Toma)',
+        origen: `Galería Selección Pixieset (${currentPackage.name})`,
         mensaje: formattedMessage,
-        title: `Selección Fotos: ${clientName} (${selectedPhotos.length} fotos) — [Pixieset]`
+        title: `Selección: ${clientName} (${totalSelected} fotos${extraCount > 0 ? ` | +${extraCount} extras` : ''}) — [Pixieset]`
       });
       setSubmissionSuccess(true);
       setIsSubmitting(false);
@@ -360,6 +453,36 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
   return (
     <div style={{ backgroundColor: '#09090b', minHeight: '100vh', color: '#f4f4f5' }} className="fade-in">
       
+      {/* ─── FLOATING TOAST NOTIFICATION BANNER ─── */}
+      {toastMessage && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: '85px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10000,
+            backgroundColor: 'rgba(18, 18, 20, 0.95)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid #ffd402',
+            color: '#ffffff',
+            padding: '0.75rem 1.6rem',
+            borderRadius: '50px',
+            boxShadow: '0 15px 35px rgba(0,0,0,0.6), 0 0 15px rgba(255, 212, 2, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontSize: '0.88rem',
+            fontWeight: '600',
+            animation: 'fadeIn 0.25s ease-out',
+            pointerEvents: 'none'
+          }}
+        >
+          <Sparkles size={18} color="#ffd402" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* ─── STAGE CONTROLLER FLOATING SWITCHER (For Demo & Workflow Inspection) ─── */}
       <div 
         style={{
@@ -671,6 +794,94 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
             {/* STAGE 1 (SELECTION) ACTIONS */}
             {stage === 'selection' && (
               <>
+                {/* Package Selector Dropdown */}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setIsPackageDropdownOpen(!isPackageDropdownOpen)}
+                    className="interactive"
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 212, 2, 0.3)',
+                      color: '#ffd402',
+                      padding: '0.45rem 0.9rem',
+                      borderRadius: '20px',
+                      fontSize: '0.82rem',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer'
+                    }}
+                    title="Cambiar paquete contratado"
+                  >
+                    <Package size={14} />
+                    <span>{currentPackage.name} ({packageLimit} fotos)</span>
+                    <ChevronDown size={13} style={{ transform: isPackageDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  </button>
+
+                  {/* Package Selector Dropdown Menu */}
+                  {isPackageDropdownOpen && (
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        zIndex: 200,
+                        backgroundColor: '#18181b',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '12px',
+                        padding: '0.5rem',
+                        minWidth: '260px',
+                        boxShadow: '0 15px 35px rgba(0,0,0,0.6)',
+                        animation: 'fadeIn 0.2s ease-out'
+                      }}
+                    >
+                      <div style={{ padding: '6px 10px', fontSize: '0.72rem', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: '700' }}>
+                        Selecciona tu Paquete:
+                      </div>
+                      {SESSION_PACKAGES.map((pkg) => {
+                        const isCurrent = pkg.id === selectedPackageId;
+                        return (
+                          <div
+                            key={pkg.id}
+                            onClick={() => {
+                              setSelectedPackageId(pkg.id);
+                              setIsPackageDropdownOpen(false);
+                              setToastMessage(`Paquete actualizado a ${pkg.name} (${pkg.included} fotos incluidas).`);
+                              setTimeout(() => setToastMessage(''), 3000);
+                            }}
+                            className="interactive"
+                            style={{
+                              padding: '8px 12px',
+                              borderRadius: '8px',
+                              backgroundColor: isCurrent ? 'rgba(255, 212, 2, 0.12)' : 'transparent',
+                              border: isCurrent ? '1px solid rgba(255, 212, 2, 0.3)' : '1px solid transparent',
+                              cursor: 'pointer',
+                              marginBottom: '4px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontSize: '0.84rem', fontWeight: isCurrent ? '700' : '500', color: isCurrent ? '#ffd402' : '#f4f4f5' }}>
+                                {pkg.name}
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: '#a1a1aa' }}>
+                                {pkg.included} fotos incluidas · ${pkg.price.toLocaleString('es-MX')} MXN
+                              </div>
+                            </div>
+                            {isCurrent && <Check size={14} color="#ffd402" />}
+                          </div>
+                        );
+                      })}
+                      <div style={{ padding: '6px 10px', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '4px', fontSize: '0.72rem', color: '#71717a' }}>
+                        Fotos adicionales: +${EXTRA_PHOTO_PRICE} MXN c/u
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Counter & Filter selected */}
                 <button
                   onClick={() => setFilterSelectedOnly(!filterSelectedOnly)}
@@ -689,15 +900,22 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                     cursor: 'pointer'
                   }}
                 >
-                  <Heart size={14} fill={selectedPhotos.length > 0 ? '#ffd402' : 'none'} color="#ffd402" />
-                  <span>{selectedPhotos.length} / {LIMIT_PHOTOS} seleccionadas</span>
+                  <Heart size={14} fill={totalSelected > 0 ? '#ffd402' : 'none'} color="#ffd402" />
+                  <span>
+                    {includedCount} / {packageLimit} incluidas
+                    {extraCount > 0 && (
+                      <strong style={{ color: '#f59e0b', marginLeft: '6px' }}>
+                        +{extraCount} extras (+${extraPhotosCost.toLocaleString('es-MX')} MXN)
+                      </strong>
+                    )}
+                  </span>
                   {filterSelectedOnly && <span style={{ fontSize: '0.7rem', color: '#a1a1aa' }}>(Ver todas)</span>}
                 </button>
 
                 {/* Submit button */}
                 <button
                   onClick={() => setIsSubmitModalOpen(true)}
-                  disabled={selectedPhotos.length === 0}
+                  disabled={totalSelected === 0}
                   className="btn-premium btn-gold interactive"
                   style={{
                     padding: '0.5rem 1.25rem',
@@ -705,12 +923,12 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    opacity: selectedPhotos.length === 0 ? 0.5 : 1,
-                    cursor: selectedPhotos.length === 0 ? 'not-allowed' : 'pointer'
+                    opacity: totalSelected === 0 ? 0.5 : 1,
+                    cursor: totalSelected === 0 ? 'not-allowed' : 'pointer'
                   }}
                 >
                   <Send size={14} />
-                  Enviar Selección ({selectedPhotos.length})
+                  Enviar Selección ({totalSelected})
                 </button>
               </>
             )}
@@ -810,17 +1028,17 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
         borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
         padding: '0.85rem 2rem'
       }}>
-        <div className="container" style={{ maxWidth: '1380px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="container" style={{ maxWidth: '1380px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '820px' }}>
             {stage === 'selection' ? (
               <Sparkles size={18} style={{ color: '#ffd402', flexShrink: 0 }} />
             ) : (
               <CheckCircle2 size={18} style={{ color: '#4ade80', flexShrink: 0 }} />
             )}
-            <p style={{ margin: 0, fontSize: '0.88rem', color: '#d4d4d8' }}>
+            <p style={{ margin: 0, fontSize: '0.88rem', color: '#d4d4d8', lineHeight: '1.4' }}>
               {stage === 'selection' ? (
                 <>
-                  <strong style={{ color: '#ffd402' }}>Modo Selección de Pruebas:</strong> Haz clic en el corazón de cada foto que desees incluir en tu paquete ({selectedPhotos.length}/{LIMIT_PHOTOS} seleccionadas). Puedes añadir notas de retoque haciendo clic en el ícono de nota.
+                  <strong style={{ color: '#ffd402' }}>Modo Selección de Pruebas:</strong> Tu {currentPackage.name} incluye <strong style={{ color: '#ffd402' }}>{packageLimit} fotografías</strong>. Si deseas más fotos, cada toma adicional se suma como extra a <strong style={{ color: '#f59e0b' }}>${EXTRA_PHOTO_PRICE} MXN</strong> con retoque profesional completo.
                 </>
               ) : (
                 <>
@@ -831,17 +1049,19 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
           </div>
 
           {stage === 'selection' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '120px', height: '6px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '130px', height: '8px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%',
-                  width: `${(selectedPhotos.length / LIMIT_PHOTOS) * 100}%`,
-                  backgroundColor: selectedPhotos.length === LIMIT_PHOTOS ? '#4ade80' : '#ffd402',
+                  width: `${Math.min(100, (totalSelected / packageLimit) * 100)}%`,
+                  backgroundColor: extraCount > 0 ? '#f59e0b' : totalSelected === packageLimit ? '#4ade80' : '#ffd402',
                   transition: 'width 0.3s ease'
                 }} />
               </div>
-              <span style={{ fontSize: '0.78rem', color: '#a1a1aa', fontWeight: '600' }}>
-                {LIMIT_PHOTOS - selectedPhotos.length > 0 ? `Quedan ${LIMIT_PHOTOS - selectedPhotos.length}` : 'Límite completado'}
+              <span style={{ fontSize: '0.8rem', color: extraCount > 0 ? '#f59e0b' : '#a1a1aa', fontWeight: '700' }}>
+                {extraCount > 0 
+                  ? `+${extraCount} fotos extras (+${extraPhotosCost.toLocaleString('es-MX')} MXN)` 
+                  : `${packageLimit - totalSelected} restantes de tu paquete`}
               </span>
             </div>
           )}
@@ -880,13 +1100,20 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
             }}
           >
             {displayedPhotos.map((item, index) => {
-              const isSelected = selectedPhotos.includes(item.id);
+              const selectionIndex = selectedPhotos.indexOf(item.id);
+              const isSelected = selectionIndex !== -1;
+              const isExtra = isSelected && selectionIndex >= packageLimit;
               const hasNote = Boolean(photoNotes[item.id]);
 
               return (
                 <div
                   key={item.id}
                   onClick={() => setLightboxIndex(index)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setToastMessage('Fotografías protegidas por derechos de autor de Buena Toma Estudio.');
+                    setTimeout(() => setToastMessage(''), 3000);
+                  }}
                   className="interactive"
                   style={{
                     marginBottom: '1.2rem',
@@ -896,8 +1123,12 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                     overflow: 'hidden',
                     backgroundColor: '#18181b',
                     cursor: 'pointer',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
                     boxShadow: isSelected && stage === 'selection' 
-                      ? '0 0 0 3px #ffd402, 0 10px 30px rgba(255, 212, 2, 0.2)' 
+                      ? (isExtra 
+                          ? '0 0 0 3px #f59e0b, 0 10px 30px rgba(245, 158, 11, 0.35)' 
+                          : '0 0 0 3px #ffd402, 0 10px 30px rgba(255, 212, 2, 0.25)') 
                       : '0 4px 15px rgba(0,0,0,0.3)',
                     transition: 'transform 0.3s ease, box-shadow 0.3s ease'
                   }}
@@ -908,15 +1139,54 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
+                  {/* Transparent Anti-Download Shield */}
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      zIndex: 1,
+                      userSelect: 'none'
+                    }}
+                  />
+
+                  {/* Proofing Watermark in Selection Stage */}
+                  {stage === 'selection' && (
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%) rotate(-25deg)',
+                        pointerEvents: 'none',
+                        zIndex: 2,
+                        whiteSpace: 'nowrap',
+                        fontSize: 'clamp(0.8rem, 1.8vw, 1.15rem)',
+                        fontWeight: '900',
+                        letterSpacing: '0.22em',
+                        textTransform: 'uppercase',
+                        color: 'rgba(255, 255, 255, 0.22)',
+                        textShadow: '0 0 10px rgba(0,0,0,0.7)',
+                        userSelect: 'none'
+                      }}
+                    >
+                      BUENA TOMA · PRUEBA
+                    </div>
+                  )}
+
                   {/* Photo image */}
                   <img
                     src={item.url}
                     alt={item.title}
                     loading="lazy"
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
                     style={{
                       width: '100%',
                       display: 'block',
                       objectFit: 'cover',
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
                       transition: 'filter 0.3s ease'
                     }}
                   />
@@ -927,6 +1197,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                     style={{
                       position: 'absolute',
                       inset: 0,
+                      zIndex: 3,
                       background: 'linear-gradient(to top, rgba(9,9,11,0.92) 0%, rgba(9,9,11,0.2) 50%, rgba(9,9,11,0.4) 100%)',
                       opacity: isSelected ? 1 : 0,
                       transition: 'opacity 0.25s ease',
@@ -949,7 +1220,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                         borderRadius: '6px',
                         fontSize: '0.72rem',
                         fontWeight: '700',
-                        color: '#ffd402',
+                        color: isExtra ? '#f59e0b' : '#ffd402',
                         letterSpacing: '0.05em'
                       }}>
                         {item.id}
@@ -989,7 +1260,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                               width: '34px',
                               height: '34px',
                               borderRadius: '50%',
-                              backgroundColor: isSelected ? '#ffd402' : 'rgba(0,0,0,0.65)',
+                              backgroundColor: isSelected ? (isExtra ? '#f59e0b' : '#ffd402') : 'rgba(0,0,0,0.65)',
                               border: 'none',
                               color: isSelected ? '#09090b' : '#ffffff',
                               display: 'flex',
@@ -1003,7 +1274,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                             <Heart size={16} fill={isSelected ? '#09090b' : 'none'} />
                           </button>
                         ) : (
-                          /* Download Single (Delivery mode) */
+                          /* Download Single (Delivery mode only) */
                           <button
                             onClick={(e) => handleDownloadSingle(item, e)}
                             title="Descargar foto en Alta Resolución"
@@ -1050,7 +1321,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                         <span style={{ fontSize: '0.75rem', color: '#a1a1aa' }}>
                           {item.focal}
                         </span>
-                        <span style={{ fontSize: '0.72rem', color: '#ffd402', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <span style={{ fontSize: '0.72rem', color: isExtra ? '#f59e0b' : '#ffd402', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>
                           {item.category}
                         </span>
                       </div>
@@ -1063,18 +1334,30 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                       position: 'absolute',
                       bottom: '12px',
                       right: '12px',
-                      backgroundColor: '#ffd402',
+                      backgroundColor: isExtra ? '#f59e0b' : '#ffd402',
                       color: '#09090b',
-                      borderRadius: '50%',
-                      width: '24px',
-                      height: '24px',
+                      borderRadius: isExtra ? '20px' : '50%',
+                      padding: isExtra ? '4px 10px' : '0',
+                      width: isExtra ? 'auto' : '26px',
+                      height: '26px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                      zIndex: 2
+                      gap: '4px',
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
+                      zIndex: 4,
+                      fontSize: '0.72rem',
+                      fontWeight: '800',
+                      letterSpacing: '0.04em'
                     }}>
-                      <Check size={14} strokeWidth={3} />
+                      {isExtra ? (
+                        <>
+                          <Sparkles size={12} fill="#09090b" />
+                          <span>+ Extra (${EXTRA_PHOTO_PRICE})</span>
+                        </>
+                      ) : (
+                        <Check size={15} strokeWidth={3} />
+                      )}
                     </div>
                   )}
                 </div>
@@ -1084,13 +1367,14 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
         )}
       </main>
 
-      {/* ─── FULLSCREEN LIGHTBOX ─── */}
-      {lightboxIndex !== null && (
+      {/* ─── FULLSCREEN LIGHTBOX (PORTAL AT ROOT BODY LEVEL) ─── */}
+      {lightboxIndex !== null && typeof document !== 'undefined' && createPortal(
         <div 
+          id="fullscreen-lightbox"
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 1400,
+            zIndex: 999999, // Immune to parent stacking context, strictly above navbar
             backgroundColor: 'rgba(5, 5, 7, 0.98)',
             display: 'flex',
             flexDirection: 'column',
@@ -1106,21 +1390,51 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '1.2rem 2rem',
-              zIndex: 10
+              padding: '1.25rem 2rem',
+              position: 'relative',
+              zIndex: 1000000,
+              backgroundColor: 'rgba(9, 9, 11, 0.92)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(10px)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div>
-              <span style={{ fontSize: '0.78rem', color: '#ffd402', fontWeight: '700', letterSpacing: '0.1em' }}>
-                {displayedPhotos[lightboxIndex].id} · {displayedPhotos[lightboxIndex].category.toUpperCase()}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.78rem', color: '#ffd402', fontWeight: '700', letterSpacing: '0.1em' }}>
+                  {displayedPhotos[lightboxIndex].id} · {displayedPhotos[lightboxIndex].category.toUpperCase()}
+                </span>
+                {stage === 'selection' && (
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: '700',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    backgroundColor: selectedPhotos.indexOf(displayedPhotos[lightboxIndex].id) >= packageLimit
+                      ? 'rgba(245, 158, 11, 0.2)'
+                      : selectedPhotos.includes(displayedPhotos[lightboxIndex].id)
+                        ? 'rgba(255, 212, 2, 0.2)'
+                        : 'rgba(255, 255, 255, 0.08)',
+                    color: selectedPhotos.indexOf(displayedPhotos[lightboxIndex].id) >= packageLimit
+                      ? '#f59e0b'
+                      : selectedPhotos.includes(displayedPhotos[lightboxIndex].id)
+                        ? '#ffd402'
+                        : '#a1a1aa'
+                  }}>
+                    {selectedPhotos.indexOf(displayedPhotos[lightboxIndex].id) >= packageLimit
+                      ? `★ Foto Extra (+${EXTRA_PHOTO_PRICE} MXN)`
+                      : selectedPhotos.includes(displayedPhotos[lightboxIndex].id)
+                        ? '✓ Incluida en Paquete'
+                        : 'Sin seleccionar'}
+                  </span>
+                )}
+              </div>
               <h3 style={{ margin: '2px 0 0 0', fontSize: '1.15rem', color: '#ffffff', fontWeight: '600' }}>
                 {displayedPhotos[lightboxIndex].title}
               </h3>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
               <span style={{ fontSize: '0.85rem', color: '#a1a1aa' }}>
                 {lightboxIndex + 1} de {displayedPhotos.length}
               </span>
@@ -1128,18 +1442,20 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               {stage === 'selection' ? (
                 <button
                   onClick={(e) => togglePhotoSelection(displayedPhotos[lightboxIndex].id, e)}
+                  className="interactive"
                   style={{
                     backgroundColor: selectedPhotos.includes(displayedPhotos[lightboxIndex].id) ? '#ffd402' : 'rgba(255,255,255,0.1)',
                     border: 'none',
                     color: selectedPhotos.includes(displayedPhotos[lightboxIndex].id) ? '#09090b' : '#ffffff',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '20px',
-                    fontSize: '0.82rem',
+                    padding: '0.55rem 1.2rem',
+                    borderRadius: '25px',
+                    fontSize: '0.84rem',
                     fontWeight: '700',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   <Heart size={16} fill={selectedPhotos.includes(displayedPhotos[lightboxIndex].id) ? '#09090b' : 'none'} />
@@ -1148,13 +1464,14 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               ) : (
                 <button
                   onClick={(e) => handleDownloadSingle(displayedPhotos[lightboxIndex], e)}
+                  className="interactive"
                   style={{
                     backgroundColor: '#ffd402',
                     border: 'none',
                     color: '#09090b',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '20px',
-                    fontSize: '0.82rem',
+                    padding: '0.55rem 1.2rem',
+                    borderRadius: '25px',
+                    fontSize: '0.84rem',
                     fontWeight: '700',
                     display: 'flex',
                     alignItems: 'center',
@@ -1167,22 +1484,39 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                 </button>
               )}
 
+              {/* High-contrast Prominent Close Button */}
               <button
+                id="lightbox-close-btn"
                 onClick={() => setLightboxIndex(null)}
+                className="interactive"
+                title="Cerrar visualizador (Esc)"
+                aria-label="Cerrar"
                 style={{
-                  width: '40px',
-                  height: '40px',
+                  width: '44px',
+                  height: '44px',
                   borderRadius: '50%',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  border: 'none',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  border: '1px solid rgba(255,255,255,0.25)',
                   color: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ef4444';
+                  e.currentTarget.style.borderColor = '#ef4444';
+                  e.currentTarget.style.transform = 'scale(1.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
+                  e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
-                <X size={20} />
+                <X size={22} strokeWidth={2.5} />
               </button>
             </div>
           </div>
@@ -1195,65 +1529,113 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '0 4rem'
+              padding: '0 4rem',
+              overflow: 'hidden'
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Anti-download protection shield */}
+            <div 
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 5,
+                userSelect: 'none'
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setToastMessage('Fotografías protegidas por derechos de autor de Buena Toma Estudio.');
+                setTimeout(() => setToastMessage(''), 3000);
+              }}
+            />
+
+            {/* Proofing Watermark in Lightbox for Selection Stage */}
+            {stage === 'selection' && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%) rotate(-25deg)',
+                  pointerEvents: 'none',
+                  zIndex: 6,
+                  whiteSpace: 'nowrap',
+                  fontSize: 'clamp(1.5rem, 4.5vw, 3.2rem)',
+                  fontWeight: '900',
+                  letterSpacing: '0.3em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255, 255, 255, 0.22)',
+                  textShadow: '0 0 25px rgba(0,0,0,0.85)',
+                  userSelect: 'none'
+                }}
+              >
+                BUENA TOMA · MUESTRA DE SELECCIÓN
+              </div>
+            )}
+
             {/* Prev Arrow */}
             <button
               onClick={() => setLightboxIndex((lightboxIndex - 1 + displayedPhotos.length) % displayedPhotos.length)}
+              className="interactive"
               style={{
                 position: 'absolute',
                 left: '20px',
-                width: '48px',
-                height: '48px',
+                width: '50px',
+                height: '50px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.15)',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                zIndex: 10,
                 transition: 'all 0.2s'
               }}
             >
-              <ChevronLeft size={24} />
+              <ChevronLeft size={26} />
             </button>
 
             {/* Main Lightbox Image */}
             <img
               src={displayedPhotos[lightboxIndex].url}
               alt={displayedPhotos[lightboxIndex].title}
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
               style={{
                 maxHeight: 'calc(80vh - 120px)',
                 maxWidth: '90vw',
                 objectFit: 'contain',
                 borderRadius: '6px',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.8)'
+                boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
+                pointerEvents: 'none',
+                userSelect: 'none'
               }}
             />
 
             {/* Next Arrow */}
             <button
               onClick={() => setLightboxIndex((lightboxIndex + 1) % displayedPhotos.length)}
+              className="interactive"
               style={{
                 position: 'absolute',
                 right: '20px',
-                width: '48px',
-                height: '48px',
+                width: '50px',
+                height: '50px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.15)',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                zIndex: 10,
                 transition: 'all 0.2s'
               }}
             >
-              <ChevronRight size={24} />
+              <ChevronRight size={26} />
             </button>
           </div>
 
@@ -1261,11 +1643,12 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
           <div 
             style={{
               padding: '1rem 2rem',
-              backgroundColor: 'rgba(0,0,0,0.4)',
+              backgroundColor: 'rgba(0,0,0,0.6)',
               display: 'flex',
               gap: '10px',
               justifyContent: 'center',
-              overflowX: 'auto'
+              overflowX: 'auto',
+              zIndex: 10
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1274,6 +1657,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                 key={thumb.id}
                 src={thumb.thumb}
                 alt={thumb.title}
+                draggable={false}
                 onClick={() => setLightboxIndex(idx)}
                 style={{
                   height: '55px',
@@ -1288,44 +1672,50 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               />
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* ─── FULLSCREEN SLIDESHOW PRESENTATION (Etapa 2) ─── */}
-      {isSlideshowOpen && (
+      {/* ─── FULLSCREEN SLIDESHOW PRESENTATION (Etapa 2 - PORTAL) ─── */}
+      {isSlideshowOpen && typeof document !== 'undefined' && createPortal(
         <div 
+          id="fullscreen-slideshow"
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 1500,
+            zIndex: 999999,
             backgroundColor: '#000000',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            userSelect: 'none'
           }}
         >
           {/* Top Slideshow controls */}
           <div style={{
             position: 'absolute',
-            top: '20px',
+            top: '25px',
             right: '25px',
-            zIndex: 10,
+            zIndex: 1000000,
             display: 'flex',
-            gap: '10px'
+            gap: '12px'
           }}>
             <button
               onClick={() => setIsSlideshowPlaying(!isSlideshowPlaying)}
+              className="interactive"
+              title={isSlideshowPlaying ? "Pausar presentación" : "Reproducir presentación"}
               style={{
-                width: '42px',
-                height: '42px',
+                width: '44px',
+                height: '44px',
                 borderRadius: '50%',
                 backgroundColor: 'rgba(255,255,255,0.15)',
-                border: 'none',
+                border: '1px solid rgba(255,255,255,0.25)',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s'
               }}
             >
               {isSlideshowPlaying ? <Pause size={18} /> : <Play size={18} />}
@@ -1333,22 +1723,44 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
 
             <button
               onClick={() => setIsSlideshowOpen(false)}
+              className="interactive"
+              title="Cerrar presentación (Esc)"
+              aria-label="Cerrar"
               style={{
-                width: '42px',
-                height: '42px',
+                width: '44px',
+                height: '44px',
                 borderRadius: '50%',
                 backgroundColor: 'rgba(255,255,255,0.15)',
-                border: 'none',
+                border: '1px solid rgba(255,255,255,0.25)',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#ef4444';
+                e.currentTarget.style.borderColor = '#ef4444';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
               }}
             >
-              <X size={20} />
+              <X size={22} strokeWidth={2.5} />
             </button>
           </div>
+
+          {/* Transparent Anti-Download Shield for Slideshow */}
+          <div 
+            style={{ position: 'absolute', inset: 0, zIndex: 5 }} 
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setToastMessage('Fotografías protegidas por derechos de autor de Buena Toma Estudio.');
+              setTimeout(() => setToastMessage(''), 3000);
+            }}
+          />
 
           {/* Slideshow image with smooth fade transition */}
           <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1356,11 +1768,15 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               key={slideshowIndex}
               src={GALLERY_ITEMS[slideshowIndex].url}
               alt={GALLERY_ITEMS[slideshowIndex].title}
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
               style={{
                 maxHeight: '92vh',
                 maxWidth: '92vw',
                 objectFit: 'contain',
-                animation: 'fadeIn 0.8s ease-in-out'
+                animation: 'fadeIn 0.8s ease-in-out',
+                pointerEvents: 'none',
+                userSelect: 'none'
               }}
             />
 
@@ -1371,12 +1787,14 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               left: '50%',
               transform: 'translateX(-50%)',
               textAlign: 'center',
-              backgroundColor: 'rgba(0,0,0,0.6)',
-              padding: '0.6rem 1.6rem',
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              padding: '0.7rem 1.8rem',
               borderRadius: '30px',
-              backdropFilter: 'blur(10px)'
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              zIndex: 10
             }}>
-              <div style={{ fontSize: '0.75rem', color: '#ffd402', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <div style={{ fontSize: '0.75rem', color: '#ffd402', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '700' }}>
                 {GALLERY_ITEMS[slideshowIndex].id} · {slideshowIndex + 1} de {GALLERY_ITEMS.length}
               </div>
               <div style={{ fontSize: '1.05rem', color: '#ffffff', fontWeight: '600' }}>
@@ -1384,18 +1802,19 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* ─── NOTE EDITOR MODAL (Etapa 1) ─── */}
-      {activeNotePhoto && (
+      {/* ─── NOTE EDITOR MODAL (Etapa 1 - PORTAL) ─── */}
+      {activeNotePhoto && typeof document !== 'undefined' && createPortal(
         <div 
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 1350,
+            zIndex: 999999,
             backgroundColor: 'rgba(0,0,0,0.85)',
-            backdropFilter: 'blur(10px)',
+            backdropFilter: 'blur(12px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1409,9 +1828,9 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               maxWidth: '520px',
               backgroundColor: '#18181b',
               border: '1px solid var(--border-color)',
-              borderRadius: '12px',
+              borderRadius: '16px',
               padding: '2rem',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.6)'
+              boxShadow: '0 25px 60px rgba(0,0,0,0.7)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1419,7 +1838,8 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               <img
                 src={activeNotePhoto.thumb}
                 alt={activeNotePhoto.title}
-                style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '6px' }}
+                draggable={false}
+                style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', pointerEvents: 'none' }}
               />
               <div>
                 <span style={{ fontSize: '0.75rem', color: '#ffd402', fontWeight: '700' }}>
@@ -1456,6 +1876,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 onClick={() => setActiveNotePhoto(null)}
+                className="interactive"
                 style={{
                   padding: '0.6rem 1.2rem',
                   backgroundColor: 'transparent',
@@ -1479,18 +1900,19 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* ─── SUBMIT SELECTION MODAL (Etapa 1) ─── */}
-      {isSubmitModalOpen && (
+      {/* ─── SUBMIT SELECTION MODAL (Etapa 1 - PORTAL) ─── */}
+      {isSubmitModalOpen && typeof document !== 'undefined' && createPortal(
         <div 
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 1400,
-            backgroundColor: 'rgba(0,0,0,0.85)',
-            backdropFilter: 'blur(12px)',
+            zIndex: 999999,
+            backgroundColor: 'rgba(0,0,0,0.88)',
+            backdropFilter: 'blur(14px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1501,14 +1923,14 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
           <div 
             style={{
               width: '100%',
-              maxWidth: '620px',
+              maxWidth: '640px',
               maxHeight: '90vh',
               overflowY: 'auto',
               backgroundColor: '#121214',
               border: '1px solid var(--border-color)',
               borderRadius: '16px',
               padding: '2.5rem',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.7)'
+              boxShadow: '0 25px 60px rgba(0,0,0,0.8)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1524,18 +1946,68 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                   <button 
                     type="button" 
                     onClick={() => setIsSubmitModalOpen(false)} 
-                    style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer' }}
+                    className="interactive"
+                    style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '4px' }}
                   >
-                    <X size={20} />
+                    <X size={22} />
                   </button>
                 </div>
 
                 <h3 style={{ fontSize: '1.6rem', fontWeight: '700', margin: '0 0 0.5rem 0', color: '#ffffff' }}>
-                  Enviar {selectedPhotos.length} fotos a Edición
+                  Enviar {totalSelected} fotos a Edición
                 </h3>
-                <p style={{ color: '#a1a1aa', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '1.8rem' }}>
-                  El equipo de retoque de Buena Toma procesará tus fotografías seleccionadas con calibración de color, suavizado de piel y formato de entrega en Ultra HD.
+                <p style={{ color: '#a1a1aa', fontSize: '0.88rem', lineHeight: '1.5', marginBottom: '1.5rem' }}>
+                  El laboratorio de Buena Toma procesará tus fotografías seleccionadas con calibración de color, suavizado de piel y formato de entrega en Ultra HD.
                 </p>
+
+                {/* Package and Extras Cost Breakdown Summary Card */}
+                <div style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '10px',
+                  padding: '1.2rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.88rem' }}>
+                    <span style={{ color: '#a1a1aa' }}>Paquete contratado:</span>
+                    <strong style={{ color: '#ffffff' }}>{currentPackage.name} ({packageLimit} fotos incluidas)</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.88rem' }}>
+                    <span style={{ color: '#a1a1aa' }}>Fotos incluidas utilizadas:</span>
+                    <span style={{ color: '#ffd402', fontWeight: '700' }}>{includedCount} de {packageLimit}</span>
+                  </div>
+                  {extraCount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.88rem' }}>
+                      <span style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Sparkles size={14} /> Fotos adicionales (extras):
+                      </span>
+                      <span style={{ color: '#f59e0b', fontWeight: '700' }}>
+                        +{extraCount} fotos x ${EXTRA_PHOTO_PRICE} = +${extraPhotosCost.toLocaleString('es-MX')} MXN
+                      </span>
+                    </div>
+                  )}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid rgba(255,255,255,0.08)',
+                    fontSize: '0.95rem'
+                  }}>
+                    <span style={{ color: '#ffffff', fontWeight: '600' }}>Total fotos a entregar editadas:</span>
+                    <strong style={{ color: '#ffd402' }}>{totalSelected} fotos</strong>
+                  </div>
+                  {extraCount > 0 && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginTop: '0.4rem',
+                      fontSize: '0.92rem'
+                    }}>
+                      <span style={{ color: '#ffffff', fontWeight: '600' }}>Inversión extra por fotos adicionales:</span>
+                      <strong style={{ color: '#f59e0b' }}>+${extraPhotosCost.toLocaleString('es-MX')} MXN</strong>
+                    </div>
+                  )}
+                </div>
 
                 {/* Selected Thumbnails Carousel Strip */}
                 <div style={{
@@ -1548,27 +2020,37 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                   borderRadius: '8px',
                   marginBottom: '1.5rem'
                 }}>
-                  {selectedPhotos.map(id => {
+                  {selectedPhotos.map((id, index) => {
                     const item = GALLERY_ITEMS.find(p => p.id === id);
+                    const isExtra = index >= packageLimit;
                     if (!item) return null;
                     return (
                       <div key={id} style={{ position: 'relative', flexShrink: 0 }}>
                         <img 
                           src={item.thumb} 
                           alt={item.title} 
-                          style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} 
+                          draggable={false}
+                          style={{
+                            width: '60px',
+                            height: '60px',
+                            objectFit: 'cover',
+                            borderRadius: '6px',
+                            border: isExtra ? '2px solid #f59e0b' : '2px solid rgba(255, 212, 2, 0.4)',
+                            pointerEvents: 'none'
+                          }} 
                         />
                         <span style={{
                           position: 'absolute',
                           bottom: '2px',
                           right: '2px',
-                          backgroundColor: 'rgba(0,0,0,0.8)',
+                          backgroundColor: isExtra ? '#f59e0b' : 'rgba(0,0,0,0.85)',
                           fontSize: '0.62rem',
-                          color: '#ffd402',
-                          padding: '1px 3px',
-                          borderRadius: '2px'
+                          color: isExtra ? '#09090b' : '#ffd402',
+                          fontWeight: '700',
+                          padding: '1px 4px',
+                          borderRadius: '3px'
                         }}>
-                          {id}
+                          {isExtra ? '+Extra' : id}
                         </span>
                       </div>
                     );
@@ -1627,7 +2109,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                   className="btn-premium btn-gold interactive"
                   style={{
                     width: '100%',
-                    padding: '0.9rem',
+                    padding: '0.95rem',
                     fontSize: '0.92rem',
                     display: 'flex',
                     alignItems: 'center',
@@ -1643,7 +2125,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                   ) : (
                     <>
                       <Send size={16} />
-                      Confirmar y Enviar Selección para Edición
+                      Confirmar Selección ({totalSelected} fotos{extraCount > 0 ? ` · +$${extraPhotosCost.toLocaleString('es-MX')} extras` : ''})
                     </>
                   )}
                 </button>
@@ -1668,14 +2150,18 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                 <h3 style={{ fontSize: '1.8rem', fontWeight: '700', color: '#ffffff', marginBottom: '0.6rem' }}>
                   ¡Selección enviada con éxito!
                 </h3>
-                <p style={{ color: '#a1a1aa', fontSize: '0.95rem', lineHeight: '1.6', maxWidth: '440px', margin: '0 auto 1.8rem auto' }}>
-                  Hemos recibido las <strong>{selectedPhotos.length} fotografías</strong> seleccionadas de tu sesión. El tiempo de entrega de edición es de 3 a 5 días hábiles.
+                <p style={{ color: '#a1a1aa', fontSize: '0.95rem', lineHeight: '1.6', maxWidth: '480px', margin: '0 auto 1.8rem auto' }}>
+                  Hemos recibido las <strong>{totalSelected} fotografías</strong> seleccionadas ({includedCount} de tu {currentPackage.name}{extraCount > 0 ? ` + ${extraCount} extras` : ''}). El tiempo de entrega de edición profesional es de 3 a 5 días hábiles.
                 </p>
 
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                   <button
                     onClick={() => {
-                      const msg = encodeURIComponent(`Hola Buena Toma, acabo de enviar mi selección de ${selectedPhotos.length} fotos para la sesión de Pedida de Mano (Sofía & Alejandro).`);
+                      const msg = encodeURIComponent(
+                        `Hola Buena Toma, acabo de enviar mi selección de ${totalSelected} fotos para la sesión de Pedida de Mano (${clientName}).\n` +
+                        `Paquete: ${currentPackage.name} (${packageLimit} incluidas)\n` +
+                        (extraCount > 0 ? `Fotos extras: ${extraCount} adicionales (+$${extraPhotosCost.toLocaleString('es-MX')} MXN)` : '')
+                      );
                       window.open(`https://wa.me/525662914092?text=${msg}`, '_blank');
                     }}
                     className="interactive"
@@ -1699,6 +2185,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
 
                   <button
                     onClick={() => { setIsSubmitModalOpen(false); setSubmissionSuccess(false); }}
+                    className="interactive"
                     style={{
                       backgroundColor: 'rgba(255,255,255,0.08)',
                       color: '#ffffff',
@@ -1715,18 +2202,19 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* ─── DOWNLOAD MODAL (Etapa 2) ─── */}
-      {isDownloadModalOpen && (
+      {/* ─── DOWNLOAD MODAL (Etapa 2 - PORTAL) ─── */}
+      {isDownloadModalOpen && typeof document !== 'undefined' && createPortal(
         <div 
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 1400,
-            backgroundColor: 'rgba(0,0,0,0.85)',
-            backdropFilter: 'blur(12px)',
+            zIndex: 999999,
+            backgroundColor: 'rgba(0,0,0,0.88)',
+            backdropFilter: 'blur(14px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1742,7 +2230,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               border: '1px solid var(--border-color)',
               borderRadius: '16px',
               padding: '2.5rem',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.7)'
+              boxShadow: '0 25px 60px rgba(0,0,0,0.8)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1755,7 +2243,8 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               </div>
               <button 
                 onClick={() => setIsDownloadModalOpen(false)} 
-                style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer' }}
+                className="interactive"
+                style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '4px' }}
               >
                 <X size={20} />
               </button>
@@ -1834,18 +2323,19 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               🔒 Enlace seguro respaldado en los servidores de Buena Toma Estudio CDMX.
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* ─── SHARE MODAL ─── */}
-      {isShareModalOpen && (
+      {/* ─── SHARE MODAL (PORTAL) ─── */}
+      {isShareModalOpen && typeof document !== 'undefined' && createPortal(
         <div 
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 1400,
-            backgroundColor: 'rgba(0,0,0,0.85)',
-            backdropFilter: 'blur(12px)',
+            zIndex: 999999,
+            backgroundColor: 'rgba(0,0,0,0.88)',
+            backdropFilter: 'blur(14px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1861,7 +2351,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               border: '1px solid var(--border-color)',
               borderRadius: '16px',
               padding: '2rem',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.7)'
+              boxShadow: '0 25px 60px rgba(0,0,0,0.8)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1871,7 +2361,8 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               </h3>
               <button 
                 onClick={() => setIsShareModalOpen(false)} 
-                style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer' }}
+                className="interactive"
+                style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '4px' }}
               >
                 <X size={20} />
               </button>
@@ -1895,6 +2386,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               </span>
               <button
                 onClick={handleCopyShareLink}
+                className="interactive"
                 style={{
                   backgroundColor: copiedLink ? '#4ade80' : '#ffd402',
                   color: '#09090b',
@@ -1919,6 +2411,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                 const text = encodeURIComponent(`Mira las fotos de nuestra sesión con Buena Toma Estudio: ${window.location.href}`);
                 window.open(`https://wa.me/?text=${text}`, '_blank');
               }}
+              className="interactive"
               style={{
                 width: '100%',
                 padding: '0.8rem',
@@ -1939,7 +2432,8 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
               Compartir por WhatsApp
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
