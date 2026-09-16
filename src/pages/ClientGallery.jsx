@@ -32,10 +32,16 @@ import {
   Plus,
   ChevronDown,
   ShieldCheck,
-  Info
+  Film,
+  Camera
 } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 import { sendLeadToWix } from '../lib/wixLeads';
+import { useWixClient } from '../context/WixContext';
+import { normalizeGalleryItem } from '../lib/wixMedia';
+import PasswordGate from '../components/PasswordGate';
+import FloatingCheckoutTicket, { CUADRO_UPSELL_PRICE, CUADRO_INCLUDED_EXTRAS } from '../components/FloatingCheckoutTicket';
+import VideoReelSection from '../components/VideoReelSection';
 
 // Client session packages definition
 export const SESSION_PACKAGES = [
@@ -223,20 +229,39 @@ const GALLERY_ITEMS = [
   }
 ];
 
-export default function ClientGallery({ initialStage = 'selection', setTab }) {
+export default function ClientGallery({ initialStage = 'selection', setTab, slug = '' }) {
+  const { wixClient, isReady } = useWixClient();
+
   // Stage state: 'selection' (Etapa 1: Selección de fotos) | 'delivery' (Etapa 2: Ya quedaron / Entrega final)
   const [stage, setStage] = useState(initialStage);
   
+  // Authentication gate state
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  // CMS Session data & photos
+  const [cmsSession, setCmsSession] = useState(null);
+  const [galleryPhotos, setGalleryPhotos] = useState(GALLERY_ITEMS);
+  const [loadingCMS, setLoadingCMS] = useState(false);
+
+  // Active Media Type filter: 'photos' | 'video' (strictly photos vs video)
+  const [activeMediaType, setActiveMediaType] = useState('photos');
+
   // Package Selection & Extras state
   const [selectedPackageId, setSelectedPackageId] = useState('estandar');
   const [isPackageDropdownOpen, setIsPackageDropdownOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  // Cuadro Upsell ($499 MXN includes 6 extra photos)
+  const [hasCuadroUpsell, setHasCuadroUpsell] = useState(false);
+
+  // Generated Slugs upon submit
+  const [generatedShareSlug, setGeneratedShareSlug] = useState('');
+  const [generatedRetouchSlug, setGeneratedRetouchSlug] = useState('');
+
   // Selection proofing state
   const [selectedPhotos, setSelectedPhotos] = useState(['BT-03180', 'BT-03192', 'BT-03194', 'BT-03200']);
   const [photoNotes, setPhotoNotes] = useState({});
   const [filterSelectedOnly, setFilterSelectedOnly] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('Todas');
   
   // Modals & Viewers
   const [lightboxIndex, setLightboxIndex] = useState(null);
@@ -260,18 +285,78 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
 
   const galleryRef = useRef(null);
 
+  // Fetch session data from Wix CMS Galeria collection
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCmsSession() {
+      if (!isReady || !wixClient) return;
+
+      try {
+        setLoadingCMS(true);
+        const search = (slug || '').trim().toLowerCase();
+
+        const res = await wixClient.items.query('Galeria').find();
+        const found = res.items.find(it => 
+          (it.title && it.title.toLowerCase() === search) ||
+          (it.nmeroDeSesin && it.nmeroDeSesin.toLowerCase() === search) ||
+          (it.slugDeGaleraMostrar && it.slugDeGaleraMostrar.toLowerCase() === search) ||
+          (it._id === search)
+        ) || res.items[0];
+
+        if (cancelled) return;
+
+        if (found) {
+          setCmsSession(found);
+          if (found.usuario) setClientName(found.usuario);
+          if (found.cantidadDeFotos) {
+            const matchingPkg = SESSION_PACKAGES.find(p => p.included === Number(found.cantidadDeFotos));
+            if (matchingPkg) setSelectedPackageId(matchingPkg.id);
+          }
+
+          const rawPhotos = found.galeraDeFotos || [];
+          if (rawPhotos.length > 0) {
+            const normalized = rawPhotos.map((p, idx) => normalizeGalleryItem(p, idx));
+            setGalleryPhotos(normalized);
+            // Default select first 4 photos for smooth proofing
+            if (normalized.length >= 4) {
+              setSelectedPhotos([normalized[0].id, normalized[1].id, normalized[2].id, normalized[3].id]);
+            }
+          }
+        }
+        setLoadingCMS(false);
+      } catch (err) {
+        console.warn('[ClientGallery] Error loading Galeria from CMS:', err);
+        setLoadingCMS(false);
+      }
+    }
+
+    loadCmsSession();
+    return () => { cancelled = true; };
+  }, [wixClient, isReady, slug]);
+
+  // Session metadata
+  const sessionCode = cmsSession?.nmeroDeSesin || cmsSession?.title || 'BNTM-26001';
+  const sessionTitle = cmsSession?.tipoDeSesi || 'Pedida de Mano';
+  const sessionPassword = cmsSession?.contrasea || '';
+
   // Dynamic Package & Extra Photos Calculations
   const currentPackage = SESSION_PACKAGES.find(p => p.id === selectedPackageId) || SESSION_PACKAGES[1];
-  const packageLimit = currentPackage.included;
+  const packageLimit = cmsSession?.cantidadDeFotos ? Number(cmsSession.cantidadDeFotos) : currentPackage.included;
   const totalSelected = selectedPhotos.length;
   const includedCount = Math.min(totalSelected, packageLimit);
   const extraCount = Math.max(0, totalSelected - packageLimit);
-  const extraPhotosCost = extraCount * EXTRA_PHOTO_PRICE;
+
+  // Extra photo calculations with Cuadro Upsell ($499 MXN includes 6 extra photos)
+  const costWithoutCuadro = extraCount * EXTRA_PHOTO_PRICE;
+  const remainingExtrasWithCuadro = Math.max(0, extraCount - CUADRO_INCLUDED_EXTRAS);
+  const costWithCuadro = CUADRO_UPSELL_PRICE + (remainingExtrasWithCuadro * EXTRA_PHOTO_PRICE);
+  const extraPhotosCost = hasCuadroUpsell ? costWithCuadro : costWithoutCuadro;
 
   useSEO({
     title: stage === 'selection' 
-      ? 'Selección de Fotografías · Pedida de Mano | Buena Toma' 
-      : 'Galería Final · Pedida de Mano (Fotos Listas) | Buena Toma',
+      ? `Selección de Fotografías · ${sessionTitle} | Buena Toma` 
+      : `Galería Final · ${sessionTitle} (Fotos Listas) | Buena Toma`,
     description: 'Portal de clientes de Buena Toma Estudio. Visualiza, selecciona y descarga tu sesión de fotografía profesional en alta resolución.',
     canonical: typeof window !== 'undefined' ? window.location.href : '',
   });
@@ -303,12 +388,9 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
     return () => window.removeEventListener('keydown', handleKeySecurity);
   }, []);
 
-  const categories = ['Todas', 'La Propuesta', 'Retratos', 'Detalles', 'Celebración'];
-
-  const displayedPhotos = GALLERY_ITEMS.filter((item) => {
-    const matchesCategory = activeCategory === 'Todas' || item.category === activeCategory;
+  const displayedPhotos = galleryPhotos.filter((item) => {
     const matchesSelection = !filterSelectedOnly || selectedPhotos.includes(item.id);
-    return matchesCategory && matchesSelection;
+    return matchesSelection;
   });
 
   // Scroll smoothly to gallery grid
@@ -358,26 +440,79 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
     }
   };
 
-  // Submit selection to Wix CMS Contacto collection
+  // Submit selection to Wix CMS Galeria and Enlacesdecompartir
   const handleSubmitSelection = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    const shareSlug = `${sessionCode.toLowerCase()}-compartir`;
+    const retouchSlug = `${sessionCode.toLowerCase()}-retocar`;
+    setGeneratedShareSlug(shareSlug);
+    setGeneratedRetouchSlug(retouchSlug);
+
+    // Filter raw Wix media items for selected photos
+    const selectedWixMedia = (cmsSession?.galeraDeFotos || []).filter(rawPhoto => {
+      const rawId = rawPhoto.id || rawPhoto.slug || rawPhoto.fileName;
+      return selectedPhotos.some(selId => selId === rawId || selId === rawPhoto.slug || selId === rawPhoto.fileName);
+    });
+
+    const fallbackSelectedWixMedia = selectedWixMedia.length > 0 ? selectedWixMedia : selectedPhotos.map((id, idx) => {
+      const p = galleryPhotos.find(gp => gp.id === id);
+      return p?.originalItem || {
+        fileName: p?.fileName || `${id}.jpg`,
+        title: p?.title || id,
+        src: p?.rawSrc || p?.url,
+        type: 'image'
+      };
+    });
+
+    // 1. Update 'Galeria' collection in Wix CMS
+    if (wixClient && cmsSession?._id) {
+      try {
+        await wixClient.items.update('Galeria', {
+          ...cmsSession,
+          galeraDeFotosARetocar: fallbackSelectedWixMedia,
+          slugDeGaleraFinal: retouchSlug,
+          slugDeGaleraMostrar: shareSlug
+        });
+        console.log('[ClientGallery] Successfully updated Galeria with retouch list.');
+      } catch (cmsErr) {
+        console.warn('[ClientGallery] Could not update Galeria in CMS:', cmsErr);
+      }
+
+      // 2. Save entry to 'Enlacesdecompartir' collection in Wix CMS
+      try {
+        await wixClient.items.save('Enlacesdecompartir', {
+          title: sessionCode,
+          slug: shareSlug,
+          galeria: fallbackSelectedWixMedia,
+          tipoDeSesin: sessionTitle
+        });
+        console.log('[ClientGallery] Successfully saved Enlacesdecompartir in CMS.');
+      } catch (enlaceErr) {
+        console.warn('[ClientGallery] Could not save Enlacesdecompartir in CMS:', enlaceErr);
+      }
+    }
+
+    // 3. Prepare full itemized lead notification
     const notesSummary = selectedPhotos.map((id, index) => {
       const note = photoNotes[id];
       const isExtra = index >= packageLimit;
-      return `- ${id}${isExtra ? ' [FOTO EXTRA +$150]' : ' [Incluida]'}${note ? ` (Nota: "${note}")` : ''}`;
+      return `- ${id}${isExtra ? ' [FOTO EXTRA]' : ' [Incluida]'}${note ? ` (Nota: "${note}")` : ''}`;
     }).join('\n');
 
     const formattedMessage = `Selección de fotos para edición:\n` +
+      `Sesión: ${sessionCode} (${sessionTitle})\n` +
       `Cliente: ${clientName}\n` +
       `Teléfono: ${clientPhone}\n` +
       `Correo: ${clientEmail}\n` +
-      `Paquete contratado: ${currentPackage.name} (${packageLimit} fotos incluidas)\n` +
+      `Paquete: ${currentPackage.name} (${packageLimit} fotos incluidas)\n` +
       `Fotos incluidas elegidas: ${includedCount} de ${packageLimit}\n` +
-      (extraCount > 0 ? `Fotos adicionales seleccionadas: ${extraCount} extras (+$${extraPhotosCost.toLocaleString('es-MX')} MXN a $${EXTRA_PHOTO_PRICE} c/u)\n` : '') +
-      (extraCount > 0 ? `Total adicional a pagar por extras: $${extraPhotosCost.toLocaleString('es-MX')} MXN\n` : '') +
-      `Total general de fotos seleccionadas: ${totalSelected}\n` +
+      (extraCount > 0 ? `Fotos extras: ${extraCount} fotos adicionales\n` : '') +
+      (hasCuadroUpsell ? `Cuadro Fino agregado: SÍ (+$${CUADRO_UPSELL_PRICE} MXN incluye 6 extras)\n` : 'Cuadro Fino: No agregado\n') +
+      `Total inversión extra a pagar: $${extraPhotosCost.toLocaleString('es-MX')} MXN\n` +
+      `Enlace Compartido creado: /compartir/${shareSlug}\n` +
+      `Enlace Retoque Editor: /retocar/${retouchSlug}\n` +
       `Notas generales: ${generalNotes || 'Ninguna'}\n\n` +
       `Desglose de fotos seleccionadas:\n${notesSummary}`;
 
@@ -386,17 +521,16 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
         nombre: clientName,
         email: clientEmail,
         telefono: clientPhone,
-        origen: `Galería Selección Pixieset (${currentPackage.name})`,
+        origen: `Galería Selección (${sessionCode} - ${currentPackage.name})`,
         mensaje: formattedMessage,
-        title: `Selección: ${clientName} (${totalSelected} fotos${extraCount > 0 ? ` | +${extraCount} extras` : ''}) — [Pixieset]`
+        title: `Selección: ${clientName} (${totalSelected} fotos${extraPhotosCost > 0 ? ` | +$${extraPhotosCost} extras` : ''}) — [${sessionCode}]`
       });
-      setSubmissionSuccess(true);
-      setIsSubmitting(false);
     } catch (err) {
-      console.error('Error enviando selección a CMS:', err);
-      setSubmissionSuccess(true);
-      setIsSubmitting(false);
+      console.error('Error enviando selección a CMS Contacto:', err);
     }
+
+    setSubmissionSuccess(true);
+    setIsSubmitting(false);
   };
 
   // Slideshow auto-advance timer
@@ -453,6 +587,17 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
   return (
     <div style={{ backgroundColor: '#09090b', minHeight: '100vh', color: '#f4f4f5' }} className="fade-in">
       
+      {/* ─── PASSWORD GATE (ESTILO DILO) ─── */}
+      {!isUnlocked && (
+        <PasswordGate
+          sessionCode={sessionCode}
+          sessionTitle={sessionTitle}
+          clientName={clientName}
+          correctPassword={sessionPassword}
+          onUnlock={() => setIsUnlocked(true)}
+        />
+      )}
+
       {/* ─── FLOATING TOAST NOTIFICATION BANNER ─── */}
       {toastMessage && (
         <div 
@@ -762,30 +907,51 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
           gap: '1.2rem',
           maxWidth: '1380px'
         }}>
-          {/* Left: Category tabs */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflowX: 'auto', paddingBottom: '2px' }}>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className="interactive"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: activeCategory === cat ? '#ffffff' : '#71717a',
-                  fontWeight: activeCategory === cat ? '600' : '400',
-                  fontSize: '0.84rem',
-                  letterSpacing: '0.04em',
-                  padding: '0.4rem 0.8rem',
-                  cursor: 'pointer',
-                  borderBottom: activeCategory === cat ? '2px solid #ffd402' : '2px solid transparent',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {cat} {cat === 'Todas' ? `(${GALLERY_ITEMS.length})` : ''}
-              </button>
-            ))}
+          {/* Left: Strictly Fotos vs Video filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <button
+              onClick={() => setActiveMediaType('photos')}
+              className="interactive"
+              style={{
+                backgroundColor: activeMediaType === 'photos' ? '#ffd402' : 'rgba(255, 255, 255, 0.06)',
+                color: activeMediaType === 'photos' ? '#09090b' : '#a1a1aa',
+                border: 'none',
+                borderRadius: '30px',
+                padding: '0.45rem 1.1rem',
+                fontSize: '0.84rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Camera size={15} />
+              <span>Fotos ({galleryPhotos.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMediaType('video')}
+              className="interactive"
+              style={{
+                backgroundColor: activeMediaType === 'video' ? '#ffd402' : 'rgba(255, 255, 255, 0.06)',
+                color: activeMediaType === 'video' ? '#09090b' : '#a1a1aa',
+                border: 'none',
+                borderRadius: '30px',
+                padding: '0.45rem 1.1rem',
+                fontSize: '0.84rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Film size={15} />
+              <span>Video Reel</span>
+            </button>
           </div>
 
           {/* Right: Actions depending on current stage */}
@@ -1366,6 +1532,25 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
           </div>
         )}
       </main>
+
+      {/* ─── VIDEO REEL SECTION (Gift Reel) ─── */}
+      {activeMediaType === 'video' && (
+        <VideoReelSection
+          title="Reel Cinemático de Regalo"
+          subtitle={`Edición conmemorativa de ${sessionTitle} para tus redes sociales`}
+        />
+      )}
+
+      {/* ─── FLOATING CHECKOUT TICKET (Etapa 1: Selección) ─── */}
+      {stage === 'selection' && (
+        <FloatingCheckoutTicket
+          totalSelected={totalSelected}
+          includedLimit={packageLimit}
+          hasCuadroUpsell={hasCuadroUpsell}
+          setHasCuadroUpsell={setHasCuadroUpsell}
+          onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
+        />
+      )}
 
       {/* ─── FULLSCREEN LIGHTBOX (PORTAL AT ROOT BODY LEVEL) ─── */}
       {lightboxIndex !== null && typeof document !== 'undefined' && createPortal(
@@ -1982,7 +2167,17 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                         <Sparkles size={14} /> Fotos adicionales (extras):
                       </span>
                       <span style={{ color: '#f59e0b', fontWeight: '700' }}>
-                        +{extraCount} fotos x ${EXTRA_PHOTO_PRICE} = +${extraPhotosCost.toLocaleString('es-MX')} MXN
+                        +{extraCount} fotos
+                      </span>
+                    </div>
+                  )}
+                  {hasCuadroUpsell && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.88rem' }}>
+                      <span style={{ color: '#ffd402' }}>
+                        🖼️ Cuadro Fino Especial (+6 extras incluidas):
+                      </span>
+                      <span style={{ color: '#ffd402', fontWeight: '700' }}>
+                        +$499 MXN
                       </span>
                     </div>
                   )}
@@ -1996,15 +2191,15 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                     <span style={{ color: '#ffffff', fontWeight: '600' }}>Total fotos a entregar editadas:</span>
                     <strong style={{ color: '#ffd402' }}>{totalSelected} fotos</strong>
                   </div>
-                  {extraCount > 0 && (
+                  {extraPhotosCost > 0 && (
                     <div style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       marginTop: '0.4rem',
                       fontSize: '0.92rem'
                     }}>
-                      <span style={{ color: '#ffffff', fontWeight: '600' }}>Inversión extra por fotos adicionales:</span>
-                      <strong style={{ color: '#f59e0b' }}>+${extraPhotosCost.toLocaleString('es-MX')} MXN</strong>
+                      <span style={{ color: '#ffffff', fontWeight: '600' }}>Inversión adicional a pagar:</span>
+                      <strong style={{ color: '#ffd402' }}>+${extraPhotosCost.toLocaleString('es-MX')} MXN</strong>
                     </div>
                   )}
                 </div>
@@ -2021,7 +2216,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                   marginBottom: '1.5rem'
                 }}>
                   {selectedPhotos.map((id, index) => {
-                    const item = GALLERY_ITEMS.find(p => p.id === id);
+                    const item = galleryPhotos.find(p => p.id === id);
                     const isExtra = index >= packageLimit;
                     if (!item) return null;
                     return (
@@ -2050,7 +2245,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                           padding: '1px 4px',
                           borderRadius: '3px'
                         }}>
-                          {isExtra ? '+Extra' : id}
+                          {isExtra ? '+Extra' : `#${index + 1}`}
                         </span>
                       </div>
                     );
@@ -2120,12 +2315,12 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                   {isSubmitting ? (
                     <>
                       <RefreshCw size={16} className="spin" />
-                      Enviando selección a Buena Toma...
+                      Guardando en Wix CMS...
                     </>
                   ) : (
                     <>
                       <Send size={16} />
-                      Confirmar Selección ({totalSelected} fotos{extraCount > 0 ? ` · +$${extraPhotosCost.toLocaleString('es-MX')} extras` : ''})
+                      Confirmar y Enviar ({totalSelected} fotos{extraPhotosCost > 0 ? ` · +$${extraPhotosCost.toLocaleString('es-MX')} extras` : ''})
                     </>
                   )}
                 </button>
@@ -2147,31 +2342,112 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                 }}>
                   <CheckCircle2 size={36} />
                 </div>
-                <h3 style={{ fontSize: '1.8rem', fontWeight: '700', color: '#ffffff', marginBottom: '0.6rem' }}>
-                  ¡Selección enviada con éxito!
+                <h3 style={{ fontSize: '1.8rem', fontWeight: '700', color: '#ffffff', marginBottom: '0.4rem' }}>
+                  ¡Fotos enviadas a Retoque!
                 </h3>
-                <p style={{ color: '#a1a1aa', fontSize: '0.95rem', lineHeight: '1.6', maxWidth: '480px', margin: '0 auto 1.8rem auto' }}>
-                  Hemos recibido las <strong>{totalSelected} fotografías</strong> seleccionadas ({includedCount} de tu {currentPackage.name}{extraCount > 0 ? ` + ${extraCount} extras` : ''}). El tiempo de entrega de edición profesional es de 3 a 5 días hábiles.
+                <p style={{ color: '#a1a1aa', fontSize: '0.92rem', lineHeight: '1.5', maxWidth: '480px', margin: '0 auto 1.5rem auto' }}>
+                  Hemos registrado tus <strong>{totalSelected} fotografías</strong> en el sistema de Buena Toma ({includedCount} de tu {currentPackage.name}{extraCount > 0 ? ` + ${extraCount} extras` : ''}).
                 </p>
 
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                {/* Generated Links Box */}
+                <div style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 212, 2, 0.25)',
+                  borderRadius: '12px',
+                  padding: '1.2rem',
+                  marginBottom: '1.5rem',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: '700', display: 'block' }}>
+                      🔗 Enlace Compartido para Invitados (Solo fotos elegidas):
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={`${window.location.origin}/compartir/${generatedShareSlug || `${sessionCode.toLowerCase()}-compartir`}`}
+                        style={{ flex: 1, backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '0.4rem 0.6rem', color: '#ffd402', fontSize: '0.8rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/compartir/${generatedShareSlug || `${sessionCode.toLowerCase()}-compartir`}`);
+                          setToastMessage('¡Enlace de compartir copiado!');
+                          setTimeout(() => setToastMessage(''), 2500);
+                        }}
+                        style={{ backgroundColor: 'rgba(255, 212, 2, 0.15)', border: '1px solid #ffd402', color: '#ffd402', borderRadius: '6px', padding: '0.4rem 0.8rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '700' }}
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: '0.72rem', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: '700', display: 'block' }}>
+                      📸 Enlace para Fotógrafo / Retocador:
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={`${window.location.origin}/retocar/${generatedRetouchSlug || `${sessionCode.toLowerCase()}-retocar`}`}
+                        style={{ flex: 1, backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '0.4rem 0.6rem', color: '#4ade80', fontSize: '0.8rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/retocar/${generatedRetouchSlug || `${sessionCode.toLowerCase()}-retocar`}`);
+                          setToastMessage('¡Enlace de retoque copiado!');
+                          setTimeout(() => setToastMessage(''), 2500);
+                        }}
+                        style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)', border: '1px solid #4ade80', color: '#4ade80', borderRadius: '6px', padding: '0.4rem 0.8rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '700' }}
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Breakdown if extras / Cuadro */}
+                {extraPhotosCost > 0 && (
+                  <div style={{
+                    padding: '1rem',
+                    backgroundColor: 'rgba(255, 212, 2, 0.08)',
+                    border: '1px solid #ffd402',
+                    borderRadius: '10px',
+                    marginBottom: '1.5rem',
+                    fontSize: '0.88rem'
+                  }}>
+                    <div style={{ fontWeight: '700', color: '#ffd402', marginBottom: '4px' }}>
+                      💳 Inversión adicional a pagar: ${extraPhotosCost.toLocaleString('es-MX')} MXN
+                    </div>
+                    <span style={{ color: '#d4d4d8', fontSize: '0.8rem' }}>
+                      {hasCuadroUpsell ? 'Incluye Cuadro Fino de gala impreso + fotos extras.' : `${extraCount} fotos extras seleccionadas a $${EXTRA_PHOTO_PRICE} c/u.`}
+                    </span>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => {
                       const msg = encodeURIComponent(
-                        `Hola Buena Toma, acabo de enviar mi selección de ${totalSelected} fotos para la sesión de Pedida de Mano (${clientName}).\n` +
+                        `Hola Buena Toma, acabo de enviar mi selección de ${totalSelected} fotos para la sesión ${sessionCode} (${clientName}).\n` +
                         `Paquete: ${currentPackage.name} (${packageLimit} incluidas)\n` +
-                        (extraCount > 0 ? `Fotos extras: ${extraCount} adicionales (+$${extraPhotosCost.toLocaleString('es-MX')} MXN)` : '')
+                        (hasCuadroUpsell ? `Cuadro Fino agregado: SÍ (+$${CUADRO_UPSELL_PRICE} MXN)\n` : '') +
+                        (extraPhotosCost > 0 ? `Inversión adicional a pagar: $${extraPhotosCost.toLocaleString('es-MX')} MXN\n` : '') +
+                        `Enlace compartido: ${window.location.origin}/compartir/${generatedShareSlug || `${sessionCode.toLowerCase()}-compartir`}`
                       );
-                      window.open(`https://wa.me/525662914092?text=${msg}`, '_blank');
+                      window.open(`https://wa.me/525592441070?text=${msg}`, '_blank');
                     }}
                     className="interactive"
                     style={{
                       backgroundColor: '#25D366',
                       color: '#ffffff',
                       border: 'none',
-                      padding: '0.75rem 1.4rem',
-                      borderRadius: '8px',
-                      fontSize: '0.85rem',
+                      padding: '0.85rem 1.6rem',
+                      borderRadius: '10px',
+                      fontSize: '0.88rem',
                       fontWeight: '700',
                       cursor: 'pointer',
                       display: 'flex',
@@ -2179,8 +2455,8 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                       gap: '8px'
                     }}
                   >
-                    <MessageCircle size={16} />
-                    Avisar por WhatsApp
+                    <MessageCircle size={17} />
+                    {extraPhotosCost > 0 ? 'Pagar Extras por WhatsApp' : 'Confirmar con Fotógrafo en WhatsApp'}
                   </button>
 
                   <button
@@ -2190,9 +2466,9 @@ export default function ClientGallery({ initialStage = 'selection', setTab }) {
                       backgroundColor: 'rgba(255,255,255,0.08)',
                       color: '#ffffff',
                       border: 'none',
-                      padding: '0.75rem 1.4rem',
-                      borderRadius: '8px',
-                      fontSize: '0.85rem',
+                      padding: '0.85rem 1.5rem',
+                      borderRadius: '10px',
+                      fontSize: '0.88rem',
                       cursor: 'pointer'
                     }}
                   >

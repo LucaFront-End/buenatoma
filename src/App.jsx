@@ -18,6 +18,8 @@ import ServicesPage from './pages/ServicesPage';
 import ClientGallery from './pages/ClientGallery';
 import DynamicLanding from './pages/DynamicLanding';
 import ZonasPage from './pages/ZonasPage';
+import SharedGallery from './pages/SharedGallery';
+import PhotographerRetouch from './pages/PhotographerRetouch';
 import RegistrationPromoPopup from './components/RegistrationPromoPopup';
 
 // Route parser from browser pathname
@@ -33,14 +35,28 @@ function getRouteFromPath(pathname) {
     return { tab: 'home', slug: null };
   }
 
+  // Dynamic gallery, share, and retouch routes
+  if (cleanPath.startsWith('galeria/') || cleanPath.startsWith('sesion/')) {
+    const slug = cleanPath.replace(/^(galeria|sesion)\//, '');
+    return { tab: 'client-gallery', slug };
+  }
+  if (cleanPath.startsWith('compartir/') || cleanPath.startsWith('galeria-compartida/')) {
+    const slug = cleanPath.replace(/^(compartir|galeria-compartida)\//, '');
+    return { tab: 'shared-gallery', slug };
+  }
+  if (cleanPath.startsWith('retocar/') || cleanPath.startsWith('fotografo/')) {
+    const slug = cleanPath.replace(/^(retocar|fotografo)\//, '');
+    return { tab: 'photographer-retouch', slug };
+  }
+
   if (cleanPath === 'pedidademano' || cleanPath === 'galeria' || cleanPath === 'gallery') {
-    return { tab: 'gallery', slug: null };
+    return { tab: 'gallery', slug: 'bntm-26001' };
   }
   if (cleanPath === 'seleccion' || cleanPath === 'galeria-seleccion' || cleanPath === 'proofing') {
-    return { tab: 'gallery-selection', slug: null };
+    return { tab: 'gallery-selection', slug: 'bntm-26001' };
   }
   if (cleanPath === 'entrega' || cleanPath === 'ya-quedaron' || cleanPath === 'galeria-entrega') {
-    return { tab: 'gallery-delivery', slug: null };
+    return { tab: 'gallery-delivery', slug: 'bntm-26001' };
   }
   if (cleanPath === 'servicios' || cleanPath === 'services') {
     return { tab: 'services', slug: null };
@@ -63,6 +79,9 @@ function getRouteFromPath(pathname) {
 
 function getPathForTab(tab, slug) {
   if (tab === 'home') return '/';
+  if (tab === 'client-gallery' && slug) return `/galeria/${slug}`;
+  if (tab === 'shared-gallery' && slug) return `/compartir/${slug}`;
+  if (tab === 'photographer-retouch' && slug) return `/retocar/${slug}`;
   if (tab === 'gallery') return '/pedidademano';
   if (tab === 'gallery-selection' || tab === 'seleccion') return '/seleccion';
   if (tab === 'gallery-delivery' || tab === 'entrega') return '/entrega';
@@ -114,6 +133,15 @@ export default function App() {
     if (typeof target === 'string' && target.startsWith('landing:')) {
       nextSlug = target.replace('landing:', '');
       nextTab = 'dynamic-landing';
+    } else if (typeof target === 'string' && target.startsWith('galeria:')) {
+      nextSlug = target.replace('galeria:', '');
+      nextTab = 'client-gallery';
+    } else if (typeof target === 'string' && target.startsWith('compartir:')) {
+      nextSlug = target.replace('compartir:', '');
+      nextTab = 'shared-gallery';
+    } else if (typeof target === 'string' && target.startsWith('retocar:')) {
+      nextSlug = target.replace('retocar:', '');
+      nextTab = 'photographer-retouch';
     } else if (target === 'home') {
       nextTab = 'home';
       nextSlug = null;
@@ -157,6 +185,23 @@ export default function App() {
     setCartItems([]);
   };
 
+  // Determine if on a gallery-related page to suppress promo popups
+  const isGalleryPage = [
+    'gallery',
+    'gallery-selection',
+    'gallery-delivery',
+    'client-gallery',
+    'shared-gallery',
+    'photographer-retouch'
+  ].includes(currentTab) || (typeof window !== 'undefined' && (
+    window.location.pathname.startsWith('/pedidademano') ||
+    window.location.pathname.startsWith('/galeria') ||
+    window.location.pathname.startsWith('/seleccion') ||
+    window.location.pathname.startsWith('/entrega') ||
+    window.location.pathname.startsWith('/compartir') ||
+    window.location.pathname.startsWith('/retocar')
+  ));
+
   const renderActivePage = () => {
     if (currentTab === 'dynamic-landing' && activeSlug) {
       return (
@@ -166,6 +211,18 @@ export default function App() {
           onLandingLoaded={(landing) => setActiveLanding(landing)}
         />
       );
+    }
+
+    if (currentTab === 'client-gallery') {
+      return <ClientGallery initialStage="selection" setTab={handleTabChange} slug={activeSlug} />;
+    }
+
+    if (currentTab === 'shared-gallery') {
+      return <SharedGallery slug={activeSlug} setTab={handleTabChange} />;
+    }
+
+    if (currentTab === 'photographer-retouch') {
+      return <PhotographerRetouch slug={activeSlug} setTab={handleTabChange} />;
     }
 
     if (currentTab === 'services' || currentTab === 'servicios') {
@@ -178,26 +235,26 @@ export default function App() {
     }
 
     if (currentTab === 'gallery') {
-      return <ClientGallery initialStage="selection" setTab={handleTabChange} />;
+      return <ClientGallery initialStage="selection" setTab={handleTabChange} slug={activeSlug || 'BNTM-26001'} />;
     }
     if (currentTab === 'gallery-selection' || currentTab === 'seleccion') {
-      return <ClientGallery initialStage="selection" setTab={handleTabChange} />;
+      return <ClientGallery initialStage="selection" setTab={handleTabChange} slug={activeSlug || 'BNTM-26001'} />;
     }
     if (currentTab === 'gallery-delivery' || currentTab === 'entrega') {
-      return <ClientGallery initialStage="delivery" setTab={handleTabChange} />;
+      return <ClientGallery initialStage="delivery" setTab={handleTabChange} slug={activeSlug || 'BNTM-26001'} />;
     }
 
     switch (currentTab) {
       case 'home':
         return <Home setTab={handleTabChange} />;
       case 'gallery':
-        return <ClientGallery initialStage="selection" setTab={handleTabChange} />;
+        return <ClientGallery initialStage="selection" setTab={handleTabChange} slug={activeSlug || 'BNTM-26001'} />;
       case 'gallery-selection':
       case 'seleccion':
-        return <ClientGallery initialStage="selection" setTab={handleTabChange} />;
+        return <ClientGallery initialStage="selection" setTab={handleTabChange} slug={activeSlug || 'BNTM-26001'} />;
       case 'gallery-delivery':
       case 'entrega':
-        return <ClientGallery initialStage="delivery" setTab={handleTabChange} />;
+        return <ClientGallery initialStage="delivery" setTab={handleTabChange} slug={activeSlug || 'BNTM-26001'} />;
       case 'services':
       case 'servicios':
         return <ServicesPage setTab={handleTabChange} />;
@@ -262,8 +319,8 @@ export default function App() {
       {/* 6. Floating support & WhatsApp shortcuts (dynamically linked when on CMS landing) */}
       <FloatingWidget customWhatsappUrl={activeLanding?.whatsapp} />
 
-      {/* 7. Registration 10% OFF Promo Popup (triggers after 3s) */}
-      <RegistrationPromoPopup />
+      {/* 7. Registration 10% OFF Promo Popup (suppressed on all gallery and proofing pages) */}
+      {!isGalleryPage && <RegistrationPromoPopup />}
 
       {/* 8. Footer */}
       <Footer setTab={handleTabChange} />
