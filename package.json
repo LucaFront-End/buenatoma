@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently --names \"VITE,API\" --prefix-colors \"cyan,magenta\" \"vite\" \"node api-dev-server.js\"",
+    "dev:vite": "vite",
+    "dev:api": "node api-dev-server.js",
     "build": "node scripts/generate-sitemap.cjs && vite build",
     "sitemap": "node scripts/generate-sitemap.cjs",
     "lint": "oxlint",
@@ -12,7 +14,12 @@
   },
   "dependencies": {
     "@wix/data": "^1.0.521",
+    "@wix/ecom": "^1.0.2511",
     "@wix/sdk": "^1.21.16",
+    "@wix/stores": "^1.0.914",
+    "concurrently": "^10.0.5",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
     "lucide-react": "^1.23.0",
     "page-flip": "^2.0.7",
     "react": "^19.2.7",

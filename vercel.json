@@ -14,6 +14,10 @@
       "destination": "/sitemap-landings.xml"
     },
     {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
       "source": "/((?!.*\\.(?:xml|txt|ico|png|jpg|jpeg|svg|webp|json|js|css|pdf)$).*)",
       "destination": "/index.html"
     }
