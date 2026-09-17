@@ -272,18 +272,19 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           {/* User Button */}
           <button 
-            onClick={togglePortal}
+            onClick={() => setTab('usuario')}
             className="interactive"
-            title="Mi Portal de Cliente"
+            title="Mi Cuenta · Portal de Usuario"
             style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-primary)',
+              background: currentTab === 'usuario' ? 'rgba(255, 212, 2, 0.15)' : 'none',
+              border: currentTab === 'usuario' ? '1px solid #ffd402' : 'none',
+              borderRadius: '50%',
+              color: currentTab === 'usuario' ? '#ffd402' : 'var(--text-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               padding: '0.5rem',
-              transition: 'color 0.3s',
+              transition: 'all 0.3s',
               cursor: 'pointer'
             }}
           >
@@ -558,6 +559,18 @@ export default function Navbar({ currentTab, setTab, cartCount, toggleCart, togg
               >
                 <span className="menu-number">06</span>
                 Contacto
+              </a>
+            </div>
+
+            <div>
+              <a
+                href="#usuario"
+                onClick={(e) => { e.preventDefault(); handleNavClick('usuario'); }}
+                className="menu-link interactive"
+                style={{ color: 'var(--accent-gold)' }}
+              >
+                <span className="menu-number">07</span>
+                Mi Cuenta / Portal
               </a>
             </div>
           </div>

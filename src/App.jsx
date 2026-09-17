@@ -21,6 +21,7 @@ import ZonasPage from './pages/ZonasPage';
 import SharedGallery from './pages/SharedGallery';
 import PhotographerRetouch from './pages/PhotographerRetouch';
 import FilmmakerPortal from './pages/FilmmakerPortal';
+import UserSection from './pages/UserSection';
 import RegistrationPromoPopup from './components/RegistrationPromoPopup';
 import { WixAuthProvider } from './context/WixAuthContext';
 
@@ -55,6 +56,10 @@ function getRouteFromPath(pathname) {
     return { tab: 'filmmaker', slug: null };
   }
 
+  if (cleanPath === 'usuario' || cleanPath === 'mi-cuenta' || cleanPath === 'portal' || cleanPath === 'perfil' || cleanPath === 'cuenta' || cleanPath === 'user') {
+    return { tab: 'usuario', slug: null };
+  }
+
   if (cleanPath === 'pedidademano' || cleanPath === 'galeria' || cleanPath === 'gallery') {
     return { tab: 'gallery', slug: 'bntm-26001' };
   }
@@ -86,6 +91,7 @@ function getRouteFromPath(pathname) {
 function getPathForTab(tab, slug) {
   if (tab === 'home') return '/';
   if (tab === 'filmmaker') return '/filmmaker';
+  if (tab === 'usuario' || tab === 'mi-cuenta' || tab === 'portal') return '/usuario';
   if (tab === 'client-gallery' && slug) return `/galeria/${slug}`;
   if (tab === 'shared-gallery' && slug) return `/compartir/${slug}`;
   if (tab === 'photographer-retouch' && slug) return `/retocar/${slug}`;
@@ -152,6 +158,9 @@ export default function App() {
     } else if (target === 'filmmaker') {
       nextTab = 'filmmaker';
       nextSlug = null;
+    } else if (target === 'usuario' || target === 'mi-cuenta' || target === 'portal') {
+      nextTab = 'usuario';
+      nextSlug = null;
     } else if (target === 'home') {
       nextTab = 'home';
       nextSlug = null;
@@ -203,7 +212,8 @@ export default function App() {
     'client-gallery',
     'shared-gallery',
     'photographer-retouch',
-    'filmmaker'
+    'filmmaker',
+    'usuario'
   ].includes(currentTab) || (typeof window !== 'undefined' && (
     window.location.pathname.startsWith('/pedidademano') ||
     window.location.pathname.startsWith('/galeria') ||
@@ -211,7 +221,8 @@ export default function App() {
     window.location.pathname.startsWith('/entrega') ||
     window.location.pathname.startsWith('/compartir') ||
     window.location.pathname.startsWith('/retocar') ||
-    window.location.pathname.startsWith('/filmmaker')
+    window.location.pathname.startsWith('/filmmaker') ||
+    window.location.pathname.startsWith('/usuario')
   ));
 
   const renderActivePage = () => {
@@ -223,6 +234,10 @@ export default function App() {
           onLandingLoaded={(landing) => setActiveLanding(landing)}
         />
       );
+    }
+
+    if (currentTab === 'usuario' || currentTab === 'mi-cuenta' || currentTab === 'portal') {
+      return <UserSection setTab={handleTabChange} />;
     }
 
     if (currentTab === 'filmmaker') {
@@ -263,6 +278,10 @@ export default function App() {
     switch (currentTab) {
       case 'home':
         return <Home setTab={handleTabChange} />;
+      case 'usuario':
+      case 'mi-cuenta':
+      case 'portal':
+        return <UserSection setTab={handleTabChange} />;
       case 'filmmaker':
         return <FilmmakerPortal setTab={handleTabChange} />;
       case 'gallery':
