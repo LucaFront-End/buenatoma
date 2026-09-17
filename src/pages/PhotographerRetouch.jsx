@@ -33,7 +33,24 @@ export default function PhotographerRetouch({ slug = '', setTab }) {
 
         if (found) {
           setSession(found);
-          const raw = found.galeraDeFotosARetocar || found.galeraDeFotos || [];
+          let raw = found.galeraDeFotosARetocar || [];
+          if (raw.length === 0) {
+            try {
+              const baseCode = (search || '').replace('-retocar', '').replace('-compartir', '');
+              const rawSel = localStorage.getItem(`buenatoma_selection_${search}`) || 
+                             localStorage.getItem(`buenatoma_selection_${baseCode}`) ||
+                             localStorage.getItem('buenatoma_selection_bntm-26001');
+              if (rawSel) {
+                const parsed = JSON.parse(rawSel);
+                if (parsed.selectedWixMedia?.length > 0) {
+                  raw = parsed.selectedWixMedia;
+                }
+              }
+            } catch (e) {}
+          }
+          if (raw.length === 0) {
+            raw = found.galeraDeFotos || [];
+          }
           setRetouchPhotos(raw.map((p, idx) => normalizeGalleryItem(p, idx)));
         }
         setLoading(false);

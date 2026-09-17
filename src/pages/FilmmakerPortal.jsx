@@ -17,7 +17,8 @@ import {
   Search,
   ShieldCheck,
   LogOut,
-  RefreshCw
+  RefreshCw,
+  Edit3
 } from 'lucide-react';
 import { useWixClient } from '../context/WixContext';
 import { useWixAuth } from '../context/WixAuthContext';
@@ -44,23 +45,34 @@ export default function FilmmakerPortal({ setTab }) {
   const [viewerStageTitle, setViewerStageTitle] = useState('');
   const [viewerPhotos, setViewerPhotos] = useState([]);
 
+  // Comment edit state
+  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [commentText, setCommentText] = useState('');
+
   useSEO({
     title: 'Portal Filmmaker & Producción | Buena Toma',
     description: 'Espacio de trabajo privado para fotógrafos, filmmakers y editores de Buena Toma Estudio.'
   });
 
-  // Fetch all sessions from Wix CMS collection 'Galeria'
+  // Fetch all sessions from Wix CMS collection 'Galeria' and merge with local cache
   const fetchSessions = async () => {
     if (!isReady || !wixClient) return;
 
     try {
       setLoading(true);
       const res = await wixClient.items.query('Galeria').find();
-      if (res.items && res.items.length > 0) {
-        setSessions(res.items);
-      } else {
-        // Fallback default sample session
-        setSessions([{
+      let cmsList = res.items && res.items.length > 0 ? res.items : [];
+
+      // Read local cache for sessions
+      let cachedList = [];
+      try {
+        const raw = localStorage.getItem('buenatoma_filmmaker_sessions_cache');
+        if (raw) cachedList = JSON.parse(raw);
+      } catch (e) {}
+
+      // Fallback default sample session if CMS is totally empty
+      if (cmsList.length === 0 && cachedList.length === 0) {
+        cmsList = [{
           _id: 'default-bntm-26001',
           title: 'BNTM-26001',
           nmeroDeSesin: 'BNTM-26001',
@@ -73,11 +85,60 @@ export default function FilmmakerPortal({ setTab }) {
           galeraDeFotosMostrar: [],
           slugDeGaleraMostrar: 'bntm-26001-compartir',
           slugDeGaleraFinal: 'bntm-26001-retocar'
-        }]);
+        }];
       }
+
+      // Merge CMS sessions with local overlay cache
+      const mergedSessions = (cmsList.length > 0 ? cmsList : cachedList).map(session => {
+        const sessionCode = session.title || session.nmeroDeSesin || '';
+        const matchCached = cachedList.find(c => 
+          (c._id && c._id === session._id) || 
+          (c.title && c.title.toLowerCase() === sessionCode.toLowerCase())
+        );
+
+        // Check if there is a client selection in localStorage
+        let clientSelectedMedia = null;
+        try {
+          const rawSel = localStorage.getItem(`buenatoma_selection_${sessionCode.toLowerCase()}`);
+          if (rawSel) {
+            const parsedSel = JSON.parse(rawSel);
+            if (parsedSel.selectedWixMedia?.length) {
+              clientSelectedMedia = parsedSel.selectedWixMedia;
+            }
+          }
+        } catch (e) {}
+
+        const finalARetocar = clientSelectedMedia || matchCached?.galeraDeFotosARetocar || session.galeraDeFotosARetocar || [];
+        const finalMostrar = matchCached?.galeraDeFotosMostrar || session.galeraDeFotosMostrar || [];
+        const finalGalera = matchCached?.galeraDeFotos?.length ? matchCached.galeraDeFotos : (session.galeraDeFotos || []);
+        const finalComentarios = matchCached?.comentarios || session.comentarios || 'Priorizar tomas con luz dorada del mirador y fotos con el anillo de compromiso.';
+        const finalUsuario = session.usuario || matchCached?.usuario || 'Sofía Oramas & Alejandro';
+        const finalFecha = session.fechaDeSesiones || matchCached?.fechaDeSesiones || '2026-09-14';
+
+        return {
+          ...session,
+          ...(matchCached || {}),
+          usuario: finalUsuario,
+          fechaDeSesiones: finalFecha,
+          comentarios: finalComentarios,
+          galeraDeFotos: finalGalera,
+          galeraDeFotosARetocar: finalARetocar,
+          galeraDeFotosMostrar: finalMostrar
+        };
+      });
+
+      setSessions(mergedSessions);
+      try {
+        localStorage.setItem('buenatoma_filmmaker_sessions_cache', JSON.stringify(mergedSessions));
+      } catch (e) {}
       setLoading(false);
     } catch (err) {
       console.warn('[FilmmakerPortal] Error loading Galeria from CMS:', err);
+      // Fallback to cache if network fails
+      try {
+        const raw = localStorage.getItem('buenatoma_filmmaker_sessions_cache');
+        if (raw) setSessions(JSON.parse(raw));
+      } catch (e) {}
       setLoading(false);
     }
   };
@@ -152,7 +213,42 @@ export default function FilmmakerPortal({ setTab }) {
   };
 
   const handleSessionUpdated = (updatedSession) => {
-    setSessions(prev => prev.map(s => s._id === updatedSession._id ? updatedSession : s));
+    setSessions(prev => {
+      const next = prev.map(s => s._id === updatedSession._id ? updatedSession : s);
+      try {
+        localStorage.setItem('buenatoma_filmmaker_sessions_cache', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const handleStartEditComment = (session) => {
+    setEditingSessionId(session._id);
+    setCommentText(session.comentarios || '');
+  };
+
+  const handleSaveComment = async (sessionId) => {
+    const updated = sessions.map(s => {
+      if (s._id === sessionId) {
+        return { ...s, comentarios: commentText.trim() };
+      }
+      return s;
+    });
+    setSessions(updated);
+    setEditingSessionId(null);
+
+    try {
+      localStorage.setItem('buenatoma_filmmaker_sessions_cache', JSON.stringify(updated));
+    } catch (e) {}
+
+    const targetSession = updated.find(s => s._id === sessionId);
+    if (wixClient && targetSession) {
+      try {
+        await wixClient.items.update('Galeria', targetSession);
+      } catch (err) {
+        console.warn('[FilmmakerPortal] Note CMS update:', err);
+      }
+    }
   };
 
   // Filter sessions by search
@@ -503,7 +599,70 @@ export default function FilmmakerPortal({ setTab }) {
                         </div>
 
                         {/* Comentarios de la sesión */}
-                        {session.comentarios ? (
+                        {editingSessionId === session._id ? (
+                          <div style={{
+                            marginTop: '0.8rem',
+                            padding: '0.75rem',
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 212, 2, 0.4)',
+                            borderRadius: '8px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ffd402', fontWeight: '700', fontSize: '0.75rem', marginBottom: '6px' }}>
+                              <Edit3 size={12} />
+                              <span>Editar Notas / Comentarios de Sesión:</span>
+                            </div>
+                            <textarea
+                              value={commentText}
+                              onChange={(e) => setCommentText(e.target.value)}
+                              rows={3}
+                              placeholder="Escribe notas de calibración, solicitudes del cliente o instrucciones de retoque..."
+                              style={{
+                                width: '100%',
+                                backgroundColor: '#18181b',
+                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                borderRadius: '6px',
+                                color: '#ffffff',
+                                fontSize: '0.78rem',
+                                padding: '0.5rem',
+                                boxSizing: 'border-box',
+                                resize: 'vertical'
+                              }}
+                            />
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setEditingSessionId(null)}
+                                style={{
+                                  backgroundColor: 'transparent',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  color: '#a1a1aa',
+                                  borderRadius: '6px',
+                                  padding: '0.3rem 0.6rem',
+                                  fontSize: '0.72rem',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveComment(session._id)}
+                                style={{
+                                  backgroundColor: '#22c55e',
+                                  border: 'none',
+                                  color: '#09090b',
+                                  borderRadius: '6px',
+                                  padding: '0.3rem 0.8rem',
+                                  fontSize: '0.72rem',
+                                  fontWeight: '700',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Guardar Notas
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
                           <div style={{
                             marginTop: '0.8rem',
                             padding: '0.65rem 0.9rem',
@@ -514,15 +673,36 @@ export default function FilmmakerPortal({ setTab }) {
                             color: '#d4d4d8',
                             lineHeight: '1.4'
                           }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ffd402', fontWeight: '700', marginBottom: '2px' }}>
-                              <MessageSquare size={12} />
-                              <span>Comentarios:</span>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ffd402', fontWeight: '700' }}>
+                                <MessageSquare size={12} />
+                                <span>Comentarios:</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditComment(session)}
+                                title="Editar comentarios"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#ffd402',
+                                  fontSize: '0.7rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  cursor: 'pointer',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  backgroundColor: 'rgba(255, 212, 2, 0.08)'
+                                }}
+                              >
+                                <Edit3 size={11} />
+                                <span>Editar</span>
+                              </button>
                             </div>
-                            "{session.comentarios}"
-                          </div>
-                        ) : (
-                          <div style={{ marginTop: '0.8rem', fontSize: '0.72rem', color: '#52525b', fontStyle: 'italic' }}>
-                            Sin comentarios especiales.
+                            <div style={{ color: session.comentarios ? '#d4d4d8' : '#71717a', fontStyle: session.comentarios ? 'normal' : 'italic' }}>
+                              {session.comentarios ? `"${session.comentarios}"` : 'Sin comentarios especiales. Haz clic en "Editar" para añadir notas.'}
+                            </div>
                           </div>
                         )}
                       </div>

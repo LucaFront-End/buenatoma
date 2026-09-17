@@ -307,14 +307,45 @@ export default function ClientGallery({ initialStage = 'selection', setTab, slug
         if (cancelled) return;
 
         if (found) {
-          setCmsSession(found);
-          if (found.usuario) setClientName(found.usuario);
-          if (found.cantidadDeFotos) {
-            const matchingPkg = SESSION_PACKAGES.find(p => p.included === Number(found.cantidadDeFotos));
+          let mergedFound = found;
+          try {
+            const rawCache = localStorage.getItem('buenatoma_filmmaker_sessions_cache');
+            if (rawCache) {
+              const cachedList = JSON.parse(rawCache);
+              const cachedMatch = cachedList.find(c => 
+                (c._id && c._id === found._id) ||
+                (c.title && c.title.toLowerCase() === found.title?.toLowerCase()) ||
+                (c.nmeroDeSesin && c.nmeroDeSesin.toLowerCase() === found.nmeroDeSesin?.toLowerCase())
+              );
+              if (cachedMatch) {
+                mergedFound = { 
+                  ...found, 
+                  ...cachedMatch,
+                  galeraDeFotos: cachedMatch.galeraDeFotos?.length ? cachedMatch.galeraDeFotos : found.galeraDeFotos,
+                  galeraDeFotosARetocar: cachedMatch.galeraDeFotosARetocar?.length ? cachedMatch.galeraDeFotosARetocar : found.galeraDeFotosARetocar,
+                  galeraDeFotosMostrar: cachedMatch.galeraDeFotosMostrar?.length ? cachedMatch.galeraDeFotosMostrar : found.galeraDeFotosMostrar
+                };
+              }
+            }
+          } catch (e) {
+            console.warn('[ClientGallery] Cache merge notice:', e);
+          }
+
+          setCmsSession(mergedFound);
+          if (mergedFound.usuario) setClientName(mergedFound.usuario);
+          if (mergedFound.cantidadDeFotos) {
+            const matchingPkg = SESSION_PACKAGES.find(p => p.included === Number(mergedFound.cantidadDeFotos));
             if (matchingPkg) setSelectedPackageId(matchingPkg.id);
           }
 
-          const rawPhotos = found.galeraDeFotos || [];
+          const rawPhotos = stage === 'delivery'
+            ? (mergedFound.galeraDeFotosMostrar?.length > 0 
+                ? mergedFound.galeraDeFotosMostrar 
+                : (mergedFound.galeraDeFotosARetocar?.length > 0 
+                    ? mergedFound.galeraDeFotosARetocar 
+                    : (mergedFound.galeraDeFotos || [])))
+            : (mergedFound.galeraDeFotos || []);
+
           if (rawPhotos.length > 0) {
             const normalized = rawPhotos.map((p, idx) => normalizeGalleryItem(p, idx));
             setGalleryPhotos(normalized);
@@ -494,6 +525,50 @@ export default function ClientGallery({ initialStage = 'selection', setTab, slug
       }
     }
 
+    // 2.5 Persist selection across local cache for instantaneous cross-desk synchronization
+    try {
+      const selectionPayload = {
+        sessionCode,
+        sessionTitle,
+        clientName,
+        clientEmail,
+        clientPhone,
+        shareSlug,
+        retouchSlug,
+        selectedPhotoIds: selectedPhotos,
+        selectedWixMedia: fallbackSelectedWixMedia,
+        photoNotes,
+        generalNotes,
+        package: currentPackage,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem(`buenatoma_selection_${sessionCode.toLowerCase()}`, JSON.stringify(selectionPayload));
+      localStorage.setItem(`buenatoma_selection_${shareSlug.toLowerCase()}`, JSON.stringify(selectionPayload));
+      localStorage.setItem(`buenatoma_selection_${retouchSlug.toLowerCase()}`, JSON.stringify(selectionPayload));
+
+      const rawCache = localStorage.getItem('buenatoma_filmmaker_sessions_cache');
+      let cacheList = rawCache ? JSON.parse(rawCache) : [];
+      const existingIdx = cacheList.findIndex(s => 
+        (s.title && s.title.toLowerCase() === sessionCode.toLowerCase()) || 
+        (s.nmeroDeSesin && s.nmeroDeSesin.toLowerCase() === sessionCode.toLowerCase())
+      );
+      if (existingIdx >= 0) {
+        cacheList[existingIdx].galeraDeFotosARetocar = fallbackSelectedWixMedia;
+        cacheList[existingIdx].slugDeGaleraFinal = retouchSlug;
+        cacheList[existingIdx].slugDeGaleraMostrar = shareSlug;
+      } else if (cmsSession) {
+        cacheList.push({
+          ...cmsSession,
+          galeraDeFotosARetocar: fallbackSelectedWixMedia,
+          slugDeGaleraFinal: retouchSlug,
+          slugDeGaleraMostrar: shareSlug
+        });
+      }
+      localStorage.setItem('buenatoma_filmmaker_sessions_cache', JSON.stringify(cacheList));
+    } catch (storageErr) {
+      console.warn('[ClientGallery] Local storage caching warning:', storageErr);
+    }
+
     // 3. Prepare full itemized lead notification
     const notesSummary = selectedPhotos.map((id, index) => {
       const note = photoNotes[id];
@@ -538,11 +613,11 @@ export default function ClientGallery({ initialStage = 'selection', setTab, slug
     let timer;
     if (isSlideshowOpen && isSlideshowPlaying) {
       timer = setInterval(() => {
-        setSlideshowIndex(prev => (prev + 1) % GALLERY_ITEMS.length);
+        setSlideshowIndex(prev => (prev + 1) % (galleryPhotos.length || 1));
       }, 4000);
     }
     return () => clearInterval(timer);
-  }, [isSlideshowOpen, isSlideshowPlaying]);
+  }, [isSlideshowOpen, isSlideshowPlaying, galleryPhotos.length]);
 
   // Keyboard navigation for Lightbox
   useEffect(() => {
@@ -1948,45 +2023,50 @@ export default function ClientGallery({ initialStage = 'selection', setTab, slug
           />
 
           {/* Slideshow image with smooth fade transition */}
-          <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img
-              key={slideshowIndex}
-              src={GALLERY_ITEMS[slideshowIndex].url}
-              alt={GALLERY_ITEMS[slideshowIndex].title}
-              draggable={false}
-              onDragStart={(e) => e.preventDefault()}
-              style={{
-                maxHeight: '92vh',
-                maxWidth: '92vw',
-                objectFit: 'contain',
-                animation: 'fadeIn 0.8s ease-in-out',
-                pointerEvents: 'none',
-                userSelect: 'none'
-              }}
-            />
+          {(() => {
+            const currentSlidePhoto = galleryPhotos[slideshowIndex] || galleryPhotos[0] || {};
+            return (
+              <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img
+                  key={slideshowIndex}
+                  src={currentSlidePhoto.url || currentSlidePhoto.thumb}
+                  alt={currentSlidePhoto.title || ''}
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                  style={{
+                    maxHeight: '92vh',
+                    maxWidth: '92vw',
+                    objectFit: 'contain',
+                    animation: 'fadeIn 0.8s ease-in-out',
+                    pointerEvents: 'none',
+                    userSelect: 'none'
+                  }}
+                />
 
-            {/* Bottom title banner */}
-            <div style={{
-              position: 'absolute',
-              bottom: '30px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              textAlign: 'center',
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              padding: '0.7rem 1.8rem',
-              borderRadius: '30px',
-              backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              zIndex: 10
-            }}>
-              <div style={{ fontSize: '0.75rem', color: '#ffd402', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '700' }}>
-                {GALLERY_ITEMS[slideshowIndex].id} · {slideshowIndex + 1} de {GALLERY_ITEMS.length}
+                {/* Bottom title banner */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '30px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  textAlign: 'center',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  padding: '0.7rem 1.8rem',
+                  borderRadius: '30px',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  zIndex: 10
+                }}>
+                  <div style={{ fontSize: '0.75rem', color: '#ffd402', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '700' }}>
+                    {currentSlidePhoto.id || `Foto ${slideshowIndex + 1}`} · {slideshowIndex + 1} de {galleryPhotos.length}
+                  </div>
+                  <div style={{ fontSize: '1.05rem', color: '#ffffff', fontWeight: '600' }}>
+                    {currentSlidePhoto.title || ''}
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: '1.05rem', color: '#ffffff', fontWeight: '600' }}>
-                {GALLERY_ITEMS[slideshowIndex].title}
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>,
         document.body
       )}
@@ -2530,7 +2610,7 @@ export default function ClientGallery({ initialStage = 'selection', setTab, slug
               Descargar Colección Completa
             </h3>
             <p style={{ color: '#a1a1aa', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '1.8rem' }}>
-              Selecciona el formato deseado para descargar las {GALLERY_ITEMS.length} fotografías en un solo archivo ZIP comprimido:
+              Selecciona el formato deseado para descargar las {galleryPhotos.length} fotografías en un solo archivo ZIP comprimido:
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>

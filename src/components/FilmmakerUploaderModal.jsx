@@ -97,8 +97,23 @@ export default function FilmmakerUploaderModal({
           await wixClient.items.update('Galeria', updatedSession);
           console.log('[FilmmakerUploader] Updated Wix CMS successfully.');
         } catch (cmsErr) {
-          console.warn('[FilmmakerUploader] CMS update error:', cmsErr);
+          console.warn('[FilmmakerUploader] CMS update error (persisting locally in studio cache):', cmsErr);
         }
+      }
+
+      // Persist in local studio cache
+      try {
+        const raw = localStorage.getItem('buenatoma_filmmaker_sessions_cache');
+        let list = raw ? JSON.parse(raw) : [];
+        const idx = list.findIndex(s => s._id === updatedSession._id || (s.title && s.title.toLowerCase() === (updatedSession.title || '').toLowerCase()));
+        if (idx >= 0) {
+          list[idx] = updatedSession;
+        } else {
+          list.push(updatedSession);
+        }
+        localStorage.setItem('buenatoma_filmmaker_sessions_cache', JSON.stringify(list));
+      } catch (cacheErr) {
+        console.warn('[FilmmakerUploader] Cache save note:', cacheErr);
       }
 
       if (onPhotosUploaded) {

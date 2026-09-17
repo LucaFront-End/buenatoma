@@ -104,6 +104,25 @@ export default function SharedGallery({ slug = '', setTab }) {
           password = galeriaItem.contrasea || '';
         }
 
+        // Check local client selection or filmmaker cache if rawPhotos is empty
+        if (rawPhotos.length === 0) {
+          try {
+            const baseCode = (searchSlug || '').replace('-compartir', '').replace('-retocar', '');
+            const rawSel = localStorage.getItem(`buenatoma_selection_${searchSlug}`) || 
+                           localStorage.getItem(`buenatoma_selection_${baseCode}`) ||
+                           localStorage.getItem('buenatoma_selection_bntm-26001');
+            if (rawSel) {
+              const parsed = JSON.parse(rawSel);
+              if (parsed.selectedWixMedia?.length > 0) {
+                rawPhotos = parsed.selectedWixMedia;
+                sessionCode = parsed.sessionCode || sessionCode;
+                title = parsed.sessionTitle || title;
+                client = parsed.clientName || client;
+              }
+            }
+          } catch (e) {}
+        }
+
         const normalized = (rawPhotos || []).map((p, idx) => normalizeGalleryItem(p, idx));
 
         setSessionData({
